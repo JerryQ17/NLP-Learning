@@ -2,24 +2,11 @@ import os
 import csv
 import numpy as np
 from sys import stderr
-from models import Review
+from src.models import Review
 from multiprocessing import Pool
 from typing import Generator, Any
 from scipy.sparse import csr_matrix
 from sklearn.feature_extraction.text import TfidfVectorizer
-
-
-# [b'.............................*............*', b'optimization finished, #iter = 41137', b'nu = 0.298037',
-#  b'obj = -13990.416638, rho = 0.031264', b'nSV = 20456, nBSV = 4944', b'Total nSV = 20456',
-#  b'.............................*............*', b'optimization finished, #iter = 41061', b'nu = 0.296250',
-#  b'obj = -13870.438031, rho = 0.027070', b'nSV = 20329, nBSV = 4937', b'Total nSV = 20329',
-#  b'.............................*............*', b'optimization finished, #iter = 41187', b'nu = 0.298669',
-#  b'obj = -14006.262722, rho = 0.022416', b'nSV = 20374, nBSV = 4996', b'Total nSV = 20374',
-#  b'.............................*............*', b'optimization finished, #iter = 41190', b'nu = 0.297351',
-#  b'obj = -13917.599077, rho = 0.033382', b'nSV = 20417, nBSV = 5020', b'Total nSV = 20417',
-#  b'.............................*............*', b'optimization finished, #iter = 41374', b'nu = 0.298531',
-#  b'obj = -13978.958947, rho = 0.030846', b'nSV = 20462, nBSV = 4959', b'Total nSV = 20462',
-#  b'Cross Validation Accuracy = 90.112%']
 
 
 class DataSet:
@@ -27,13 +14,23 @@ class DataSet:
     数据集类
     """
 
-    def __init__(self, dataset_pathname: str, processes: int = os.cpu_count(), save_memory: bool = False):
+    def __init__(
+            self,
+            dataset_pathname: str,
+            processes: int = os.cpu_count(),
+            save_memory: bool = False,
+            cached_length: bool = False
+    ):
         """
         :param dataset_pathname: 数据集路径
         :param processes: 进程数
         :param save_memory: 是否节省内存，
+        :param cached_length: 是否缓存数据集长度
         """
         self.__iterator: Generator[Review, Any, None] | None = None
+        self.__cached_length: bool | None = None
+        self.cached_length = cached_length
+        self.__len: int | None = None
 
         self.__save_memory: bool = save_memory is True
         self.__processes: int | None = None
@@ -53,8 +50,15 @@ class DataSet:
         self.__feature_names: np.ndarray | None = None
 
     def __len__(self):
+        if self.__cached_length and self.__len is not None:
+            return self.__len
         if self.__save_memory:
-            return 1
+            with open(self.__dataset_pathname, encoding='utf-8-sig', errors='ignore') as file:
+                csv_reader = csv.reader(file)
+                next(csv_reader)  # 跳过标题行
+                for _ in csv_reader:
+                    self.__len += 1
+            return self.__len
         if self.__items is None:
             return 0
         return len(self.__items)
@@ -79,6 +83,14 @@ class DataSet:
     @property
     def save_memory(self):
         return self.__save_memory
+
+    @property
+    def cached_length(self):
+        return self.__cached_length
+
+    @cached_length.setter
+    def cached_length(self, cached_length: bool):
+        self.__cached_length = cached_length is True
 
     @property
     def processes(self):
@@ -108,10 +120,12 @@ class DataSet:
     def dataset_pathname(self, dataset_pathname: str):
         if not os.path.exists(dataset_pathname):
             raise FileNotFoundError(dataset_pathname)
-        self.__dataset_pathname = dataset_pathname
-        self.__dataset_title = os.path.split(self.dataset_pathname)[1]
-        if not self.__dataset_title.endswith('.csv'):
+        title = os.path.split(dataset_pathname)[1]
+        if not title.endswith('.csv'):
             raise ValueError('数据集必须是csv文件')
+        self.__dataset_pathname = dataset_pathname
+        self.__dataset_title = title
+        self.__len = None
         if self.__save_memory:
             self.__item = None
         else:
@@ -151,6 +165,8 @@ class DataSet:
             raise RuntimeError('save_memory=True时，不能调用_read()方法')
         self.__items = np.array(list(self._readline()), dtype=Review)
         self.__items.setflags(write=False)
+        if self.__cached_length:
+            self.__len = len(self.__items)
         return self.__items
 
     def tfidf(self) -> csr_matrix:
