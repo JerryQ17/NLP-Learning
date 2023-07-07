@@ -10,5 +10,6 @@ __all__ = [
     'KernelType',
     'SVM',
     # models.py
-    'Review'
+    'Review',
+    'GridResult'
 ]

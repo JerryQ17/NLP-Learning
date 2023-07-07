@@ -1,5 +1,8 @@
+from math import log
 from enum import Enum
-import libsvm.svmutil
+from libsvm.svmutil import *
+import matplotlib.pyplot as plt
+from src.models import GridResult
 
 
 class SymType(Enum):
@@ -36,10 +39,56 @@ class SVM:
         'n_fold': '-v'
     }
 
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def grid(
+            problem_path: str, n_fold: int = 5,
+            c_min: float = 1e-8, c_max: float = 1e8, c_step: float = 10,
+            g_min: float = 1e-8, g_max: float = 1e8, g_step: float = 10,
+            detailed: bool = False, img_name: str = 'grid_result.png', dpi: int = 1000
+    ) -> list[GridResult] | GridResult:
+
+        def _mul_range(start: float, end: float, step: float) -> list[float]:
+            return [start * step ** i for i in range(int(log(end / start, step)) + 1)]
+
+        def _draw_result():
+            # 数据处理
+            c_values = [log(result.c_min, 10) for result in results]
+            g_values = [log(result.g_min, 10) for result in results]
+            accuracy_values = [result.rate for result in results]
+            # 绘图
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+            ax.scatter(c_values, g_values, accuracy_values, c=accuracy_values, cmap='viridis')
+            ax.set_xlabel('lg(Cost)')
+            ax.set_ylabel('lg(Gamma)')
+            ax.set_zlabel('Accuracy')
+            # 保存图片
+            plt.savefig(img_name, dpi=dpi)
+
+        results = []
+        c_range = _mul_range(c_min, c_max, c_step)
+        g_range = _mul_range(g_min, g_max, g_step)
+        total_epochs = len(c_range) * len(g_range)
+        print('total epochs:', total_epochs, 'epochs')
+        print('expected time:', total_epochs / 4, 'hours')
+        for c in c_range:
+            for g in g_range:
+                print(f'epoch {len(results) + 1} / {total_epochs}')
+                ac = SVM.train(problem_path, n_fold=n_fold, gamma=g, cost=c)
+                results.append(GridResult(c_min=c_min, c_max=c_max, g_min=g_min, g_max=g_max, rate=ac))
+        if detailed:
+            _draw_result()
+            return results
+        else:
+            return max(results, key=lambda x: x.rate)
+
     @staticmethod
     def train(
-            problem_path: str = r'.\tfidf\IMDB_tfidf_libsvm.txt',
-            model_path: str = r'.\svm\IMDB',
+            problem_path: str,
+            model_path: str = None,
             sym_type: SymType = None,
             kernel_type: KernelType = None,
             degree: int = None,
@@ -82,17 +131,17 @@ class SVM:
         param_str = ''
         for key, value in kwargs.items():
             if value is not None:
-                param_str += SVM.__svm_train_options[key] + ' ' + str(value) + ' '
+                param_str += f'{SVM.__svm_train_options[key]} {value} '
 
         # 读取数据，训练模型
-        prob = libsvm.svmutil.svm_read_problem(problem_path)
+        prob = svm_read_problem(problem_path)
         if param_str == '':
-            model = libsvm.svmutil.svm_train(*prob)
+            model = svm_train(*prob)
         else:
-            model = libsvm.svmutil.svm_train(*prob, param_str)
+            model = svm_train(*prob, param_str)
         # 保存模型
         if n_fold is None:
-            libsvm.svmutil.svm_save_model(model_path + param_str + '.model', model)
+            svm_save_model(model_path + param_str + '.model', model)
         return model
 
     @staticmethod
@@ -114,12 +163,7 @@ class SVM:
         if probability_estimates is not None:
             param_str += '-b ' + str(probability_estimates)
         # 测试模型
-        y, x = libsvm.svmutil.svm_read_problem(problem_path)
+        y, x = svm_read_problem(problem_path)
         if model is None:
-            model = libsvm.svmutil.svm_load_model(model_path)
-        return libsvm.svmutil.svm_predict(y, x, model, param_str)
-
-
-if __name__ == '__main__':
-    svm = SVM()
-    svm.train()
+            model = svm_load_model(model_path)
+        return svm_predict(y, x, model, param_str)
