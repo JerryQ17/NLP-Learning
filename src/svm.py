@@ -1,3 +1,4 @@
+import time
 from math import log
 from enum import Enum
 from libsvm.svmutil import *
@@ -69,17 +70,37 @@ class SVM:
         c_range = _mul_range(c_min, c_max, c_step)
         g_range = _mul_range(g_min, g_max, g_step)
         total_epochs = len(c_range) * len(g_range)
+        hour_per_epoch = 0.25
         if enable_logging:
             print('total epochs:', total_epochs, 'epochs')
-            print('expected time:', total_epochs / 4, 'hours')
+            print('expected time:', total_epochs * hour_per_epoch, 'hours')
+        start_time = time.time()
         for c in c_range:
             for g in g_range:
                 if enable_logging:
+                    print('-' * 50)
                     print(f'epoch {len(results) + 1} / {total_epochs}')
+                    print(f'current c: {c}, current g: {g}')
+                    print(f'current time: {time.time() - start_time} seconds')
+                    print(f'current hour per epoch: {hour_per_epoch} hours')
+                    print(f'remaining time: {(total_epochs - len(results) - 1) * hour_per_epoch} hours')
                 ac = SVM.train(problem_path, n_fold=n_fold, gamma=g, cost=c)
                 results.append(GridResult(c_min=c, c_max=c * c_step, g_min=g, g_max=g * g_step, rate=ac))
+                if enable_logging:
+                    current = time.time()
+                    print(f'epoch {len(results)} finished, time elapsed: {current - start_time} seconds')
+                    hour_per_epoch = (current - start_time) / len(results) / 3600
+        if enable_logging:
+            print('-' * 50)
+            print('grid search finished')
+            print('total time elapsed:', time.time() - start_time, 'seconds')
+            print('total hour per epoch:', (time.time() - start_time) / len(results) / 3600, 'hours')
         if detailed:
+            if enable_logging:
+                print('drawing result...')
             _draw_result()
+            if enable_logging:
+                print('drawing finished')
             return results
         else:
             return max(results, key=lambda x: x.rate)
