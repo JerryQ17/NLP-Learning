@@ -1,0 +1,6 @@
+pydantic
+numpy
+scipy
+scikit-learn
+libsvm-official
+matplotlib

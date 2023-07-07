@@ -39,12 +39,9 @@ class SVM:
         'n_fold': '-v'
     }
 
-    def __init__(self):
-        pass
-
     @staticmethod
     def grid(
-            problem_path: str, n_fold: int = 5,
+            problem_path: str, n_fold: int = 5, enable_logging: bool = False,
             c_min: float = 1e-8, c_max: float = 1e8, c_step: float = 10,
             g_min: float = 1e-8, g_max: float = 1e8, g_step: float = 10,
             detailed: bool = False, img_name: str = 'grid_result.png', dpi: int = 1000
@@ -72,13 +69,15 @@ class SVM:
         c_range = _mul_range(c_min, c_max, c_step)
         g_range = _mul_range(g_min, g_max, g_step)
         total_epochs = len(c_range) * len(g_range)
-        print('total epochs:', total_epochs, 'epochs')
-        print('expected time:', total_epochs / 4, 'hours')
+        if enable_logging:
+            print('total epochs:', total_epochs, 'epochs')
+            print('expected time:', total_epochs / 4, 'hours')
         for c in c_range:
             for g in g_range:
-                print(f'epoch {len(results) + 1} / {total_epochs}')
+                if enable_logging:
+                    print(f'epoch {len(results) + 1} / {total_epochs}')
                 ac = SVM.train(problem_path, n_fold=n_fold, gamma=g, cost=c)
-                results.append(GridResult(c_min=c_min, c_max=c_max, g_min=g_min, g_max=g_max, rate=ac))
+                results.append(GridResult(c_min=c, c_max=c * c_step, g_min=g, g_max=g * g_step, rate=ac))
         if detailed:
             _draw_result()
             return results
@@ -145,7 +144,7 @@ class SVM:
         return model
 
     @staticmethod
-    def svm_predict(
+    def predict(
             problem_path: str,
             model: float = None,
             model_path: str = None,
