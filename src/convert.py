@@ -4,8 +4,8 @@ import numpy as np
 from sys import stderr
 from src import TfIdfDataset
 from scipy.sparse import csr_matrix
+from torch.utils.data import Dataset
 from multiprocessing.pool import Pool
-from torch.utils.data import Dataset, DataLoader
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 
@@ -121,14 +121,6 @@ class DataConverter:
                 for item, row in zip(self.items_generator, self.__tfidf_matrix):
                     file.write(self._generate_line(item.sentiment, row))
         return os.path.abspath(save_path)
-
-    def to_dataloader(self, **kwargs) -> DataLoader:
-        """转换为DataLoader"""
-        if 'dataset' not in kwargs:
-            kwargs.update(dataset=self.__dataset)
-        if 'num_workers' not in kwargs:
-            kwargs.update(num_workers=self.processes)
-        return DataLoader(**kwargs)
 
     @staticmethod
     def _generate_line(sentiment: bool, row: csr_matrix) -> str:
