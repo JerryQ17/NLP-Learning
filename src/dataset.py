@@ -1,16 +1,14 @@
 import os
 import csv
 import numpy as np
-from src.models import Review
+from src import Review
 from typing import Generator, Any
 from scipy.sparse import csr_matrix
 from torch.utils.data import Dataset
 
 
 class IMDBDataset(Dataset):
-    """
-    数据集类
-    """
+    """IMDB数据集"""
 
     def __init__(self, dataset_pathname: str, save_memory: bool = False):
         """
@@ -31,6 +29,7 @@ class IMDBDataset(Dataset):
         self.dataset_pathname = dataset_pathname
 
     def __len__(self):
+        """获取数据集长度"""
         if self.__save_memory:
             with open(self.__dataset_pathname, encoding='utf-8-sig', errors='ignore') as file:
                 csv_reader = csv.reader(file)
@@ -44,6 +43,7 @@ class IMDBDataset(Dataset):
         return len(self.__items)
 
     def __getitem__(self, item):
+        """获取数据集中的某一项"""
         assert isinstance(item, int), 'item必须是一个整数'
         assert item >= 0, 'item必须大于等于0'
         if self.__save_memory:
@@ -56,6 +56,7 @@ class IMDBDataset(Dataset):
             return self.__items[item].dict()
 
     def __iter__(self):
+        """获取数据集迭代器"""
         if self.__save_memory:
             self._readline().close()
             self.__iterator = self._readline()
@@ -64,18 +65,22 @@ class IMDBDataset(Dataset):
         return self
 
     def __next__(self) -> Review:
+        """获取数据集中的下一项"""
         return next(self.__iterator)
 
     @property
     def save_memory(self):
+        """是否节省内存"""
         return self.__save_memory
 
     @property
     def dataset_pathname(self):
+        """数据集路径"""
         return self.__dataset_pathname
 
     @dataset_pathname.setter
     def dataset_pathname(self, dataset_pathname: str):
+        """数据集路径必须存在，且必须是csv文件"""
         if not os.path.exists(dataset_pathname):
             raise FileNotFoundError(dataset_pathname)
         title = os.path.split(dataset_pathname)[1]
@@ -90,17 +95,21 @@ class IMDBDataset(Dataset):
 
     @property
     def dataset_title(self):
+        """数据集标题"""
         return self.__dataset_title
 
     @property
     def item(self):
+        """当前项"""
         return self.__item
 
     @property
     def items(self):
+        """所有项"""
         return self.__items
 
     def _readline(self):
+        """读取一项数据"""
         with open(self.__dataset_pathname, encoding='utf-8-sig', errors='ignore') as file:
             csv_reader = csv.reader(file)
             next(csv_reader)  # 跳过标题行
@@ -118,7 +127,12 @@ class IMDBDataset(Dataset):
 
 
 class TfIdfDataset(Dataset):
+    """TF-IDF数据集"""
     def __init__(self, values: csr_matrix, labels: np.ndarray):
+        """
+        :param values: TF-IDF值
+        :param labels: 标签
+        """
         if not isinstance(values, csr_matrix):
             raise TypeError('values必须是一个csr_matrix对象')
         if not isinstance(labels, np.ndarray):
@@ -141,8 +155,10 @@ class TfIdfDataset(Dataset):
 
     @property
     def values(self):
+        """TF-IDF值"""
         return self.__values
 
     @property
     def labels(self):
+        """标签"""
         return self.__labels
