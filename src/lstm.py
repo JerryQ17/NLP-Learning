@@ -12,15 +12,17 @@ class LSTMModel(nn.Module):
         self.__output_dim: int = output_dim
 
         # LSTM层
-        self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, device=self.__device)
-
+        self.__lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, device=self.__device)
         # 全连接层
-        self.fc = nn.Linear(hidden_dim, output_dim, device=self.__device)
+        self.__fc = nn.Linear(hidden_dim, output_dim, device=self.__device)
+        # softmax层
+        self.__softmax = nn.Softmax(dim=1)
 
-    def forward(self, x):
-        lstm_out, _ = self.lstm(x.view(len(x), 1, -1))
-        out = self.fc(lstm_out.view(len(x), -1))
-        return out
+    def forward(self, input_tensor: torch.Tensor):
+        lstm_out, _ = self.__lstm(input_tensor.view(len(input_tensor), 1, -1))
+        fc_out = self.__fc(lstm_out.view(len(input_tensor), -1))
+        softmax_out = self.__softmax(fc_out)
+        return softmax_out
 
     @property
     def device(self):
@@ -41,3 +43,15 @@ class LSTMModel(nn.Module):
     @property
     def output_dim(self):
         return self.__output_dim
+
+    @property
+    def lstm(self):
+        return self.__lstm
+
+    @property
+    def fc(self):
+        return self.__fc
+
+    @property
+    def softmax(self):
+        return self.__softmax
