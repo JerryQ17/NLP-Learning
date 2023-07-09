@@ -22,7 +22,8 @@ class KernelType(Enum):
     PRECOMPUTED_KERNEL = 4
 
 
-class SVM:
+class SVM(object):
+    """SVM模型"""
     __svm_train_options = {
         'sym_type': '-s',
         'kernel_type': '-t',
@@ -40,13 +41,50 @@ class SVM:
         'n_fold': '-v'
     }
 
-    @staticmethod
+    def __init__(self, problem_path: str = None, model_path: str = None):
+        """
+        :param problem_path: 训练集文件路径
+        :param model_path: 模型文件路径
+        """
+        self.__problem_path: str | None = None
+        self.problem_path = problem_path
+        self.model_path: str = model_path
+
+    @property
+    def problem_path(self):
+        """训练集文件路径"""
+        return self.__problem_path
+
+    @problem_path.setter
+    def problem_path(self, problem_path: str):
+        """训练集文件路径必须实际存在"""
+        if os.path.exists(problem_path):
+            self.__problem_path = problem_path
+        else:
+            raise FileNotFoundError(f'文件{problem_path}不存在')
+
     def grid(
-            problem_path: str, n_fold: int = 5, enable_logging: bool = False,
+            self,
+            problem_path: str = None, n_fold: int = 5, enable_logging: bool = False,
             c_min: float = 1e-8, c_max: float = 1e8, c_step: float = 10,
             g_min: float = 1e-8, g_max: float = 1e8, g_step: float = 10,
             detailed: bool = False, img_name: str = 'grid_result.png', dpi: int = 1000
     ) -> list[GridResult] | GridResult:
+        """
+        网格搜索
+        :param problem_path: 训练集文件路径
+        :param n_fold: n折交叉验证
+        :param enable_logging: 是否启用运行信息记录
+        :param c_min: C的最小值
+        :param c_max: C的最大值
+        :param c_step: C的步长
+        :param g_min: Gamma的最小值
+        :param g_max: Gamma的最大值
+        :param g_step: Gamma的步长
+        :param detailed: 是否返回详细信息
+        :param img_name: 图片名称
+        :param dpi: 图片dpi
+        """
 
         def _mul_range(start: float, end: float, step: float) -> list[float]:
             return [start * step ** i for i in range(int(log(end / start, step)) + 1)]
@@ -84,8 +122,11 @@ class SVM:
                     print(f'current time: {time.time() - start_time} seconds')
                     print(f'current hour per epoch: {hour_per_epoch} hours')
                     print(f'remaining time: {(total_epochs - len(results) - 1) * hour_per_epoch} hours')
-                ac = SVM.train(problem_path, n_fold=n_fold, gamma=g, cost=c)
-                results.append(GridResult(c_min=c, c_max=c * c_step, g_min=g, g_max=g * g_step, rate=ac))
+                accuracy = self.train(
+                    self.__problem_path if problem_path is None else problem_path,
+                    n_fold=n_fold, gamma=g, cost=c
+                )
+                results.append(GridResult(c_min=c, c_max=c * c_step, g_min=g, g_max=g * g_step, rate=accuracy))
                 if enable_logging:
                     current = time.time()
                     print(f'epoch {len(results)} finished, time elapsed: {current - start_time} seconds')
@@ -105,9 +146,9 @@ class SVM:
         else:
             return max(results, key=lambda x: x.rate)
 
-    @staticmethod
     def train(
-            problem_path: str,
+            self,
+            problem_path: str = None,
             model_path: str = None,
             sym_type: SymType = None,
             kernel_type: KernelType = None,
@@ -146,6 +187,7 @@ class SVM:
         """
         # 生成参数字符串
         kwargs = locals()
+        kwargs.pop('self')
         kwargs.pop('problem_path')
         kwargs.pop('model_path')
         param_str = ''
@@ -154,36 +196,42 @@ class SVM:
                 param_str += f'{SVM.__svm_train_options[key]} {value} '
 
         # 读取数据，训练模型
-        prob = svm_read_problem(problem_path)
+        prob = svm_read_problem(self.__problem_path if problem_path is None else problem_path)
         if param_str == '':
             model = svm_train(*prob)
         else:
             model = svm_train(*prob, param_str)
         # 保存模型
         if n_fold is None:
-            svm_save_model(model_path + param_str + '.model', model)
+            svm_save_model(self.model_path if model_path is None else model_path + param_str + '.model', model)
         return model
 
-    @staticmethod
     def predict(
-            problem_path: str,
+            self,
+            problem_path: str = None,
             model: float = None,
             model_path: str = None,
             probability_estimates: int = None,
     ) -> tuple[list, tuple[float, float, float], list]:
         """
         使用libsvm预测
-        :return: None
+        :param problem_path: libsvm可以读取的文件路径
+        :param model: 训练好的模型
+        :param model_path: 训练好的模型保存路径
+        :param probability_estimates: whether to predict probability estimates, 0 or 1 (default 0)
+        :return: 预测结果
         """
         # 检查参数
-        if model is None and model_path is None:
-            raise ValueError('model和model_path不能同时为None')
+        if self.model_path is None and model is None and model_path is None:
+            raise ValueError('model_path和model不能同时为None')
+        if model_path and not os.path.exists(model_path):
+            raise FileNotFoundError('模型文件不存在')
         # 生成参数字符串
         param_str = ''
         if probability_estimates is not None:
             param_str += '-b ' + str(probability_estimates)
         # 测试模型
-        y, x = svm_read_problem(problem_path)
+        y, x = svm_read_problem(self.__problem_path if problem_path is None else problem_path)
         if model is None:
-            model = svm_load_model(model_path)
+            model = svm_load_model(self.model_path if model_path is None else model_path)
         return svm_predict(y, x, model, param_str)
