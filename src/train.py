@@ -161,6 +161,8 @@ class Trainer:
         if not isinstance(num_epochs, int) and num_epochs < 1:
             raise ValueError('num_epochs必须是一个正整数')
 
+        self.__model.train()
+
         for epoch in range(num_epochs):
             if enable_logging:
                 print(f"Epoch {epoch + 1}/{num_epochs}")
@@ -178,3 +180,39 @@ class Trainer:
                     print(f"Step {i + 1}/{len(train_loader)}, Loss: {loss.item():.4f}")
             if enable_logging:
                 print('-' * 50)
+
+    def evaluate(self, test_loader: DataLoader, enable_logging: bool = False) -> float:
+        if self.__model is None:
+            raise RuntimeError('请先设置model')
+        if not hasattr(test_loader, '__iter__'):
+            raise TypeError('test_loader必须可迭代')
+
+        self.__model.eval()
+
+        with torch.no_grad():
+            correct = 0
+            total = 0
+            for texts, labels in test_loader:
+                texts = torch.Tensor(texts)
+                labels = torch.Tensor(labels).type(torch.LongTensor)
+
+                outputs = self.__model(texts)
+                _, predicted = torch.max(outputs.data, 1)
+                total += labels.size(0)
+                correct += torch.sum(predicted.eq(labels)).item()
+
+            accuracy = 100 * correct / total
+            if enable_logging:
+                print(f"Accuracy: {accuracy:.4f}%")
+            return accuracy
+
+    def save(self, save_path: str = r'..\lstm\model\lstm.pth') -> str:
+        if self.__model is None:
+            raise RuntimeError('请先设置model')
+        torch.save(self.__model.state_dict(), save_path)
+        return os.path.abspath(save_path)
+
+    def load(self, load_path: str):
+        if self.__model is None:
+            raise RuntimeError('请先设置model')
+        self.__model.load_state_dict(torch.load(load_path))
