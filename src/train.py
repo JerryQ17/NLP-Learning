@@ -37,9 +37,9 @@ class Trainer(object):
         self.word2vec_dataset = word2vec_dataset
 
         # svm
-        self.__svm_train_path: str = ''
+        self.__svm_train_path: str | None = None
         self.svm_train_path = svm_train_path
-        self.__svm_model_path: str = ''
+        self.__svm_model_path: str | None = None
         self.svm_model_path = svm_model_path
         self.__svm: SVM = SVM()
 
@@ -106,6 +106,9 @@ class Trainer(object):
 
     @svm_train_path.setter
     def svm_train_path(self, svm_train_path: str):
+        if svm_train_path is None:
+            self.__svm_train_path = None
+            return
         if not os.path.exists(svm_train_path):
             raise FileNotFoundError(f'文件{svm_train_path}不存在')
         self.__svm_train_path = svm_train_path
@@ -116,6 +119,11 @@ class Trainer(object):
 
     @svm_model_path.setter
     def svm_model_path(self, svm_model_path: str):
+        if svm_model_path is None:
+            self.__svm_model_path = None
+            return
+        if not os.path.exists(svm_model_path):
+            raise FileNotFoundError(f'文件{svm_model_path}不存在')
         self.__svm_model_path = svm_model_path
         self.__svm.load(svm_model_path)
 
