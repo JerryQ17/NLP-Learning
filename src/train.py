@@ -1,17 +1,33 @@
 import os
 import torch
+import signal
 from src import SVM
 from torch import nn
-from torch.utils.data import Dataset, DataLoader
+from types import FrameType
 from torch.optim import Optimizer
+from src.models import NNTrainingState
+from torch.utils.data import Dataset, DataLoader
 
 
-class Trainer:
+class Trainer(object):
+    """数据训练器"""
+
     def __init__(
-            self, tfidf_dataset: Dataset = None, word2vec_dataset: Dataset = None,
+            self,
+            autosave: bool = True, autosave_dir: str = r'..\autosave',
+            tfidf_dataset: Dataset = None, word2vec_dataset: Dataset = None,
             svm_train_path: str = None, svm_model_path: str = None,
             model: nn.Module = None, optimizer: Optimizer = None, criterion: nn.Module = None, device: str = None
     ):
+        # 自动保存
+        self.__autosave: bool = autosave is True
+        self.__autosave_dir: str = ''
+        self.autosave_dir = autosave_dir
+        self.__auto_save_signals: tuple[signal.Signals, ...] = (signal.SIGINT, signal.SIGTERM, signal.SIGABRT,)
+        if self.__autosave:
+            for auto_save_signal in self.__auto_save_signals:
+                signal.signal(auto_save_signal, self._auto_save_handler)
+
         # 数据集
         # tfidf数据集
         self.__tfidf_dataset: Dataset | None = None
@@ -27,13 +43,32 @@ class Trainer:
         self.__svm_model_path: str = svm_model_path
         self.__svm: SVM = SVM(problem_path=self.__svm_train_path, model_path=self.__svm_model_path)
 
-        # lstm
+        # nn
+        self.__nn_training_state: NNTrainingState | None = None
         self.__model: nn.Module | None = None
         self.model = model
         self.__optimizer = optimizer
         self.__criterion = criterion
         self.__device: torch.device | None = None
         self.device = device
+
+    @property
+    def autosave(self):
+        return self.__autosave
+
+    @autosave.setter
+    def autosave(self, autosave: bool):
+        self.__autosave = autosave is True
+
+    @property
+    def autosave_dir(self):
+        return self.__autosave_dir
+
+    @autosave_dir.setter
+    def autosave_dir(self, autosave_dir: str):
+        if not isinstance(autosave_dir, str):
+            raise TypeError('autosave_dir必须是一个字符串')
+        self.__autosave_dir = autosave_dir
 
     @property
     def tfidf_dataset(self):
@@ -137,8 +172,6 @@ class Trainer:
         if device is None:
             if torch.cuda.is_available():
                 self.__device = torch.device('cuda')
-            elif torch.backends.mps.is_available():
-                self.__device = torch
             else:
                 self.__device = torch.device('cpu')
         elif isinstance(device, list) and len(device) == 2 \
@@ -161,25 +194,39 @@ class Trainer:
         if not isinstance(num_epochs, int) and num_epochs < 1:
             raise ValueError('num_epochs必须是一个正整数')
 
+        self.__model.to(self.__device)
         self.__model.train()
 
-        for epoch in range(num_epochs):
-            if enable_logging:
-                print(f"Epoch {epoch + 1}/{num_epochs}")
-            for i, (texts, labels) in enumerate(train_loader):
-                texts = torch.Tensor(texts)
-                labels = torch.Tensor(labels).type(torch.LongTensor)
+        if self.autosave:
+            self.__nn_training_state = NNTrainingState()
+            self.__nn_training_state.current_epoch = 0
+            self.__nn_training_state.total_epochs = num_epochs
 
-                outputs = self.__model(texts)
-                loss = self.__criterion(outputs, labels)
+        try:
+            for epoch in range(num_epochs):
+                if enable_logging:
+                    print(f"Epoch {epoch + 1}/{num_epochs}")
+                for i, (texts, labels) in enumerate(train_loader):
+                    texts = torch.Tensor(texts)
+                    labels = torch.Tensor(labels).type(torch.LongTensor)
 
-                self.__optimizer.zero_grad()
-                loss.backward()
-                self.__optimizer.step()
-                if enable_logging and (i + 1) % 100 == 0:
-                    print(f"Step {i + 1}/{len(train_loader)}, Loss: {loss.item():.4f}")
-            if enable_logging:
-                print('-' * 50)
+                    outputs = self.__model(texts)
+                    loss = self.__criterion(outputs, labels)
+
+                    self.__optimizer.zero_grad()
+                    loss.backward()
+                    self.__optimizer.step()
+                    if enable_logging and (i + 1) % 100 == 0:
+                        print(f"Step {i + 1}/{len(train_loader)}, Loss: {loss.item():.4f}")
+                if self.autosave:
+                    self.__nn_training_state.current_epoch = epoch
+                    self.__nn_training_state.model_state_dict = self.__model.state_dict()
+                    self.__nn_training_state.optimizer_state_dict = self.__optimizer.state_dict()
+                if enable_logging:
+                    print('-' * 50)
+        except Exception as error:
+            self._auto_save_handler()
+            raise error
 
     def evaluate(self, test_loader: DataLoader, enable_logging: bool = False) -> float:
         if self.__model is None:
@@ -187,6 +234,7 @@ class Trainer:
         if not hasattr(test_loader, '__iter__'):
             raise TypeError('test_loader必须可迭代')
 
+        self.__model.to(self.__device)
         self.__model.eval()
 
         with torch.no_grad():
@@ -206,6 +254,20 @@ class Trainer:
                 print(f"Accuracy: {accuracy:.4f}%")
             return accuracy
 
+    def predict(self, texts: torch.Tensor) -> torch.Tensor:
+        if self.__model is None:
+            raise RuntimeError('请先设置model')
+        if not isinstance(texts, torch.Tensor):
+            raise TypeError('texts必须是一个torch.Tensor对象')
+
+        self.__model.to(self.__device)
+        self.__model.eval()
+
+        with torch.no_grad():
+            outputs: torch.Tensor = self.__model(texts)
+            _, predicted = torch.max(outputs.data, 1)
+        return predicted
+
     def save(self, save_path: str = r'..\lstm\model\lstm.pth') -> str:
         if self.__model is None:
             raise RuntimeError('请先设置model')
@@ -216,3 +278,10 @@ class Trainer:
         if self.__model is None:
             raise RuntimeError('请先设置model')
         self.__model.load_state_dict(torch.load(load_path))
+
+    # noinspection PyUnusedLocal
+    def _auto_save_handler(self, auto_save_signal: signal.Signals | int = None, frame: FrameType = None):
+        print(f'接收到退出信号{auto_save_signal}，保存中...')
+        if self.__nn_training_state is not None:
+            torch.save(self.__nn_training_state, self.autosave_dir + r'\nn.state')
+        # todo: 保存svm模型
