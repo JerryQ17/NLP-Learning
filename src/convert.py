@@ -9,7 +9,8 @@ from multiprocessing.pool import Pool
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 
-class DataConverter:
+class Converter:
+    """数据转换器"""
     def __init__(self, dataset: Dataset, processes: int = os.cpu_count()):
         # 数据集
         self.__dataset: Dataset | None = None
