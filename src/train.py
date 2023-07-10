@@ -44,7 +44,7 @@ class Trainer(object):
         self.__svm: SVM = SVM()
 
         # nn
-        self.__nn_training_state: NNTrainingState | None = None
+        self.__nn_training_state: NNTrainingState = NNTrainingState()
         self.__model: nn.Module | None = None
         self.model = model
         self.__optimizer = optimizer
@@ -109,7 +109,7 @@ class Trainer(object):
         if svm_train_path is None:
             self.__svm_train_path = None
             return
-        if not os.path.exists(svm_train_path):
+        if not os.path.isfile(svm_train_path):
             raise FileNotFoundError(f'文件{svm_train_path}不存在')
         self.__svm_train_path = svm_train_path
 
@@ -122,7 +122,7 @@ class Trainer(object):
         if svm_model_path is None:
             self.__svm_model_path = None
             return
-        if not os.path.exists(svm_model_path):
+        if not os.path.isfile(svm_model_path):
             raise FileNotFoundError(f'文件{svm_model_path}不存在')
         self.__svm_model_path = svm_model_path
         self.__svm.load(svm_model_path)
@@ -189,7 +189,11 @@ class Trainer(object):
         else:
             raise TypeError(f'device必须是一个长度为2的列表或者是一个字符串或者是一个整数')
 
-    def train(self, train_loader: DataLoader, num_epochs: int, enable_logging: bool = False):
+    def train(
+            self,
+            train_loader: DataLoader, num_epochs: int, enable_logging: bool = False,
+            from_record: bool = False, record_path: str = None
+    ):
         if self.__model is None:
             raise RuntimeError('请先设置model')
         if self.__optimizer is None:
@@ -197,20 +201,30 @@ class Trainer(object):
         if self.__criterion is None:
             raise RuntimeError('请先设置criterion')
         if not hasattr(train_loader, '__iter__'):
-            raise TypeError('train_loader必须可迭代')
+            raise AttributeError('train_loader必须可迭代')
         if not isinstance(num_epochs, int) and num_epochs < 1:
             raise ValueError('num_epochs必须是一个正整数')
+        if from_record:
+            if not isinstance(record_path, str):
+                raise TypeError('record_path必须是一个文件路径')
+            if not os.path.isfile(record_path):
+                raise FileNotFoundError(f'文件{record_path}不存在')
+            self.__nn_training_state = NNTrainingState(**torch.load(record_path))
+            self.__model.load_state_dict(self.__nn_training_state.model_state_dict)
+            self.__optimizer.load_state_dict(self.__nn_training_state.optimizer_state_dict)
+            record_epoch = self.__nn_training_state.current_epoch
+        else:
+            record_epoch = 0
 
         self.__model.to(self.__device)
         self.__model.train()
 
-        if self.autosave:
-            self.__nn_training_state = NNTrainingState()
+        if self.autosave and not from_record:
             self.__nn_training_state.current_epoch = 0
             self.__nn_training_state.total_epochs = num_epochs
 
         try:
-            for epoch in range(num_epochs):
+            for epoch in range(num_epochs - record_epoch):
                 if enable_logging:
                     print(f"Epoch {epoch + 1}/{num_epochs}")
                 for i, (texts, labels) in enumerate(train_loader):
@@ -239,7 +253,7 @@ class Trainer(object):
         if self.__model is None:
             raise RuntimeError('请先设置model')
         if not hasattr(test_loader, '__iter__'):
-            raise TypeError('test_loader必须可迭代')
+            raise AttributeError('test_loader必须可迭代')
 
         self.__model.to(self.__device)
         self.__model.eval()
@@ -289,6 +303,6 @@ class Trainer(object):
     # noinspection PyUnusedLocal
     def _auto_save_handler(self, auto_save_signal: signal.Signals | int = None, frame: FrameType = None):
         print(f'接收到退出信号{auto_save_signal}，保存中...')
-        if self.__nn_training_state is not None:
+        if self.__nn_training_state != NNTrainingState():
             torch.save(self.__nn_training_state, self.autosave_dir + r'\nn.state')
         # todo: 保存svm模型
