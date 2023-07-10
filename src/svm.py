@@ -43,6 +43,15 @@ class SVM(object):
 
     def __init__(self):
         self.__model = None
+        self.__grid_results: list[GridResult] = []
+
+    @property
+    def model(self):
+        return self.__model
+
+    @property
+    def grid_results(self) -> list[GridResult]:
+        return self.__grid_results
 
     def load(self, model_path: str):
         """加载模型"""
@@ -148,9 +157,9 @@ class SVM(object):
 
         def _draw_result():
             # 数据处理
-            c_values = [log(result.c_min, 10) for result in results]
-            g_values = [log(result.g_min, 10) for result in results]
-            accuracy_values = [result.rate for result in results]
+            c_values = [log(result.c_min, 10) for result in self.__grid_results]
+            g_values = [log(result.g_min, 10) for result in self.__grid_results]
+            accuracy_values = [result.rate for result in self.__grid_results]
             # 绘图
             fig = plt.figure()
             ax = fig.add_subplot(111, projection='3d')
@@ -161,7 +170,7 @@ class SVM(object):
             # 保存图片
             plt.savefig(img_name, dpi=dpi)
 
-        results = []
+        self.__grid_results = []
         c_range = _mul_range(c_min, c_max, c_step)
         g_range = _mul_range(g_min, g_max, g_step)
         total_epochs = len(c_range) * len(g_range)
@@ -174,27 +183,29 @@ class SVM(object):
             for g in g_range:
                 if enable_logging:
                     print('-' * 50)
-                    print(f'epoch {len(results) + 1} / {total_epochs}\ncurrent c: {c}, current g: {g}\n'
+                    print(f'epoch {len(self.__grid_results) + 1} / {total_epochs}\ncurrent c: {c}, current g: {g}\n'
                           f'current time: {time.time() - start_time} seconds\n'
                           f'current hour per epoch: {hour_per_epoch} hours\n'
-                          f'remaining time: {(total_epochs - len(results) - 1) * hour_per_epoch} hours')
+                          f'remaining time: {(total_epochs - len(self.__grid_results) - 1) * hour_per_epoch} hours')
                 accuracy = self.train(problem_path, n_fold=n_fold, gamma=g, cost=c)
-                results.append(GridResult(c_min=c, c_max=c * c_step, g_min=g, g_max=g * g_step, rate=accuracy))
+                self.__grid_results.append(
+                    GridResult(c_min=c, c_max=c * c_step, g_min=g, g_max=g * g_step, rate=accuracy)
+                )
                 if enable_logging:
                     current = time.time()
-                    print(f'epoch {len(results)} finished, time elapsed: {current - start_time} seconds')
-                    hour_per_epoch = (current - start_time) / len(results) / 3600
+                    print(f'epoch {len(self.__grid_results)} finished, time elapsed: {current - start_time} seconds')
+                    hour_per_epoch = (current - start_time) / len(self.__grid_results) / 3600
         if enable_logging:
             print('-' * 50)
             print('grid search finished')
             print('total time elapsed:', time.time() - start_time, 'seconds')
-            print('total hour per epoch:', (time.time() - start_time) / len(results) / 3600, 'hours')
+            print('total hour per epoch:', (time.time() - start_time) / len(self.__grid_results) / 3600, 'hours')
         if detailed:
             if enable_logging:
                 print('drawing result...')
             _draw_result()
             if enable_logging:
                 print('drawing finished')
-            return results
+            return self.__grid_results
         else:
-            return max(results, key=lambda x: x.rate)
+            return max(self.__grid_results, key=lambda x: x.rate)

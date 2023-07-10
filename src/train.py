@@ -304,5 +304,8 @@ class Trainer(object):
     def _auto_save_handler(self, auto_save_signal: signal.Signals | int = None, frame: FrameType = None):
         print(f'接收到退出信号{auto_save_signal}，保存中...')
         if self.__nn_training_state != NNTrainingState():
-            torch.save(self.__nn_training_state, self.autosave_dir + r'\nn.state')
-        # todo: 保存svm模型
+            torch.save(self.__nn_training_state, self.autosave_dir + r'\nn.autosave.pth')
+            print('nn.autosave.pth已保存')
+        if self.svm.grid_results:
+            torch.save([i.dict() for i in self.svm.grid_results], self.autosave_dir + r'\svm.autosave.pth')
+            print('svm.autosave.pth已保存')
