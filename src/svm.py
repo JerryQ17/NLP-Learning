@@ -1,5 +1,6 @@
 import time
 from math import log
+from torch import load
 from enum import IntEnum
 from libsvm.svmutil import *
 import matplotlib.pyplot as plt
@@ -134,7 +135,8 @@ class SVM(object):
             problem_path: str = None, n_fold: int = 5, enable_logging: bool = False,
             c_min: float = 1e-8, c_max: float = 1e8, c_step: float = 10,
             g_min: float = 1e-8, g_max: float = 1e8, g_step: float = 10,
-            detailed: bool = False, img_name: str = r'..\svm\train\grid_result.png', dpi: int = 1000
+            detailed: bool = False, img_name: str = r'..\svm\train\grid_result.png', dpi: int = 1000,
+            from_record: bool = False, record_path: str = None
     ) -> list[GridResult] | GridResult:
         """
         网格搜索
@@ -150,6 +152,8 @@ class SVM(object):
         :param detailed: 是否返回详细信息
         :param img_name: 图片名称
         :param dpi: 图片dpi
+        :param from_record: 是否从记录中读取结果继续训练
+        :param record_path: 记录文件路径
         """
 
         def _mul_range(start: float, end: float, step: float) -> list[float]:
@@ -169,10 +173,28 @@ class SVM(object):
             ax.set_zlabel('Accuracy')
             # 保存图片
             plt.savefig(img_name, dpi=dpi)
+            plt.close()
 
-        self.__grid_results = []
-        c_range = _mul_range(c_min, c_max, c_step)
-        g_range = _mul_range(g_min, g_max, g_step)
+        if from_record:
+            self.__grid_results = [GridResult(**result) for result in load(record_path)]
+            if len(self.__grid_results) == 0:
+                raise ValueError('记录文件为空')
+            last_max_c_min = self.__grid_results[0].c_min
+            last_max_g_min = self.__grid_results[0].g_min
+            for r in self.__grid_results:
+                if r.c_min > last_max_c_min:
+                    last_max_c_min = r.c_min
+                if r.g_min > last_max_g_min:
+                    last_max_g_min = r.g_min
+            c_range = _mul_range(last_max_c_min, c_max, c_step)
+            g_range = _mul_range(g_min, g_max, g_step)
+        else:
+            self.__grid_results = []
+            last_max_c_min = c_min
+            last_max_g_min = g_min - 1
+            c_range = _mul_range(c_min, c_max, c_step)
+            g_range = _mul_range(g_min, g_max, g_step)
+
         total_epochs = len(c_range) * len(g_range)
         hour_per_epoch = 0.25
         if enable_logging:
@@ -181,6 +203,8 @@ class SVM(object):
         start_time = time.time()
         for c in c_range:
             for g in g_range:
+                if from_record and c == last_max_c_min and g <= last_max_g_min:
+                    continue
                 if enable_logging:
                     print('-' * 50)
                     print(f'epoch {len(self.__grid_results) + 1} / {total_epochs}\ncurrent c: {c}, current g: {g}\n'
