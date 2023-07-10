@@ -10,13 +10,14 @@ from torch.utils.data import Dataset
 class IMDBDataset(Dataset):
     """IMDB数据集"""
 
-    def __init__(self, dataset_pathname: str, save_memory: bool = False):
+    def __init__(self, dataset_pathname: str, save_memory: bool = False, get_item_by_tuple: bool = False):
         """
         :param dataset_pathname: 数据集路径
         :param save_memory: 是否节省内存，
         """
         self.__iterator: Generator[Review, Any, None] | None = None
         self.__save_memory: bool = save_memory is True
+        self.__get_item_by_tuple: bool = get_item_by_tuple is True
 
         if self.__save_memory:
             self.__item: Review | None = None
@@ -51,9 +52,15 @@ class IMDBDataset(Dataset):
                 csv_reader = csv.reader(file)
                 for _ in range(item + 2):
                     i = next(csv_reader)
-                return Review(review=i[0], sentiment=i[1] == 'positive').dict()
+                if self.__get_item_by_tuple:
+                    return i[0], i[1] == 'positive'
+                else:
+                    return Review(review=i[0], sentiment=i[1] == 'positive')
         else:
-            return self.__items[item].dict()
+            if self.__get_item_by_tuple:
+                return self.__items[item].review, self.__items[item].sentiment
+            else:
+                return self.__items[item]
 
     def __iter__(self):
         """获取数据集迭代器"""
@@ -72,6 +79,16 @@ class IMDBDataset(Dataset):
     def save_memory(self):
         """是否节省内存"""
         return self.__save_memory
+
+    @property
+    def get_item_by_tuple(self):
+        """是否通过元组获取项"""
+        return self.__get_item_by_tuple
+
+    @get_item_by_tuple.setter
+    def get_item_by_tuple(self, get_item_by_tuple: bool):
+        """设置是否通过元组获取项"""
+        self.__get_item_by_tuple = get_item_by_tuple is True
 
     @property
     def dataset_pathname(self):
@@ -128,6 +145,7 @@ class IMDBDataset(Dataset):
 
 class TfIdfDataset(Dataset):
     """TF-IDF数据集"""
+
     def __init__(self, values: csr_matrix, labels: np.ndarray):
         """
         :param values: TF-IDF值
