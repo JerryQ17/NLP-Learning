@@ -1,12 +1,12 @@
 import time
 from math import log
-from enum import Enum
+from enum import IntEnum
 from libsvm.svmutil import *
 import matplotlib.pyplot as plt
 from src.models import GridResult
 
 
-class SymType(Enum):
+class SymType(IntEnum):
     C_SVC = 0
     NU_SVC = 1
     ONE_CLASS_SVM = 2
@@ -14,7 +14,7 @@ class SymType(Enum):
     NU_SVR = 4
 
 
-class KernelType(Enum):
+class KernelType(IntEnum):
     LINEAR = 0
     POLYNOMIAL = 1
     RADIAL_BASIS_FUNCTION = 2
@@ -193,7 +193,7 @@ class SVM(object):
         param_str = ''
         for key, value in kwargs.items():
             if value is not None:
-                param_str += f'{SVM.__svm_train_options[key]} {value} '
+                param_str += f'{self.__svm_train_options[key]} {value} '
 
         # 读取数据，训练模型
         prob = svm_read_problem(self.__problem_path if problem_path is None else problem_path)
