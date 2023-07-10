@@ -10,7 +10,7 @@ __all__ = [
     'IMDBDataset',
     'TfIdfDataset',
     # convert.py
-    'DataConverter',
+    'Converter',
     # train.py
     'Trainer',
     # svm.py
@@ -20,6 +20,7 @@ __all__ = [
     # models.py
     'Review',
     'GridResult',
+    'NNTrainingState',
     # lstm.py
     'LSTMModel'
 ]
