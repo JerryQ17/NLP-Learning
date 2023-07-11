@@ -103,15 +103,13 @@ class Converter:
 
     def to_svm(self, save_path: str = None) -> str:
         """保存为svm格式"""
-        if self.__tfidf_matrix is None:
-            self.tfidf()
         if save_path is None:
             if hasattr(self.__dataset, 'dataset_title'):
-                save_path = rf'..\svm\train\{self.__dataset.dataset_title}.txt'
+                save_path = rf'..\svm\data\{self.__dataset.dataset_title}.txt'
             else:
-                save_path = rf'..\svm\train\to_svm_output({time.time()}).txt'
+                save_path = rf'..\svm\data\to_svm_output({time.time()}).txt'
         if self.__processes > 1:
-            args = [(item.sentiment, row) for item, row in zip(self.items_generator, self.__tfidf_matrix)]
+            args = [(item.sentiment, row) for item, row in zip(self.items_generator, self.tfidf_matrix)]
             with Pool(processes=self.__processes) as pool:
                 results = pool.starmap(self._generate_line, args)
             with open(save_path, 'w') as file:
