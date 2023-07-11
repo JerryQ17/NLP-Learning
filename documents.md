@@ -7,6 +7,7 @@
 - directory `src`
     - file `__init__.py`
     - file [`convert.py`](#convert.py)
+      - class [`Converter`](#class-Converter)
     - file [`dataset.py`](#dataset.py)
     - file [`lstm.py`](#lstm.py)
     - file [`models.py`](#models.py)
@@ -91,6 +92,61 @@
 ## dataset.py
 
 [源代码](./src/dataset.py)
+
+### class IMDBDataset
+
+`IMDBDataset`继承了`torch.utils.data.Dataset`，它从`csv`文件中读取数据集，转化为特定的数据结构，便于开展后续的数据处理工作。
+
+> Tips: `IMDBDataset`是可迭代的
+
+|        属性         |      类型       |   初始值   |                             描述                             |
+| :-----------------: | :-------------: | :--------: | :----------------------------------------------------------: |
+|    `save_memory`    |     `bool`      |  `False`   |                    **只读**，是否节省内存                    |
+| `get_item_by_tuple` |     `bool`      |  `False`   | `True`时，`__getitem__()`方法返回一个元组<br/>`False`时，`__getitem__()`方法返回一个`Review`实例 |
+| `dataset_pathname`  |      `str`      | `Required` |                `csv`文件的路径，**必须**存在                 |
+|   `dataset_title`   |      `str`      |     /      |            **只读**，`csv`文件的文件名，自动更新             |
+|       `item`        |    `Review`     |     /      |  **只读**，数据集中的当前项<br/>`save_memory = False`时无效  |
+|       `items`       | `numpy.ndarray` |     /      | **只读**，数据集中的所有项<br/>`save_memory = True`时为`None` |
+
+#### method \_\_init__()
+
+初始化一个`IMDBDataset`实例
+
+##### 输入
+
+|        参数         |  类型  |   初始值   |                             描述                             |
+| :-----------------: | :----: | :--------: | :----------------------------------------------------------: |
+| `dataset_pathname`  | `str`  | `Required` |                   数据集路径，**必须**存在                   |
+|    `save_memory`    | `bool` |  `False`   |                         是否节省内存                         |
+| `get_item_by_tuple` | `bool` |  `False`   | `True`时，`__getitem__()`方法返回一个元组<br/>`False`时，`__getitem__()`方法返回一个`Review`实例 |
+
+##### 输出
+
+`None`
+
+### class TfIdfDataset
+
+`TfIdfDataset`继承了`torch.utils.data.Dataset`，用于后续神经网络训练。一般由[`Converter`](#class-Converter)自动生成，用户不需要自行创建该类的实例。
+
+|   属性   |           类型            |   初始值   |   描述   |
+| :------: | :-----------------------: | :--------: | :------: |
+| `values` | `scipy.sparse.csr_matrix` | `Required` | TF-IDF值 |
+| `labels` |      `numpy.ndarray`      | `Required` | 情感标签 |
+
+#### method \_\_init__()
+
+初始化一个`TfIdfDataset`实例
+
+##### 输入
+
+|   参数   |           类型            |   初始值   |   描述   |
+| :------: | :-----------------------: | :--------: | :------: |
+| `values` | `scipy.sparse.csr_matrix` | `Required` | TF-IDF值 |
+| `labels` |      `numpy.ndarray`      | `Required` | 情感标签 |
+
+##### 输出
+
+`None`
 
 ---
 

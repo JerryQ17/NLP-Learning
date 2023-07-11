@@ -13,7 +13,8 @@ class IMDBDataset(Dataset):
     def __init__(self, dataset_pathname: str, save_memory: bool = False, get_item_by_tuple: bool = False):
         """
         :param dataset_pathname: 数据集路径
-        :param save_memory: 是否节省内存，
+        :param save_memory: 是否节省内存
+        :param get_item_by_tuple: __getitem__方法是否返回一个元组
         """
         self.__iterator: Generator[Review, Any, None] | None = None
         self.__save_memory: bool = save_memory is True
