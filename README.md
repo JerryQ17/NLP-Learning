@@ -1,6 +1,6 @@
 # 自然语言处理实践
 
-[![Static Badge](https://img.shields.io/badge/GitHub-JerryQ17-red)](https://github.com/JerryQ17)[![Static Badge](https://img.shields.io/badge/Repo-NLP--Learning-green)](https://github.com/JerryQ17/NLP-Learning)
+[![GitHub](https://img.shields.io/badge/GitHub-JerryQ17-red)](https://github.com/JerryQ17) [![Repo](https://img.shields.io/badge/Repo-NLP--Learning-green)](https://github.com/JerryQ17/NLP-Learning) ![GitHub Repo stars](https://img.shields.io/github/stars/JerryQ17/NLP-Learning)
 
 ## 目录
 
