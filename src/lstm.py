@@ -102,5 +102,5 @@ class LSTMModel(nn.Module):
         return self.__fc
 
     @property
-    def softmax(self):
-        return self.__softmax
+    def sigmoid(self):
+        return self.__sigmoid
