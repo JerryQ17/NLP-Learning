@@ -1,6 +1,6 @@
 # 自然语言处理实践
 
-![Static Badge](./assets/GitHub-JerryQ17-yellow.svg+xml)
+[![Static Badge](https://img.shields.io/badge/GitHub-JerryQ17-red)](https://github.com/JerryQ17)[![Static Badge](https://img.shields.io/badge/Repo-NLP--Learning-green)](https://github.com/JerryQ17/NLP-Learning)
 
 ## 目录
 
