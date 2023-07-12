@@ -2,14 +2,14 @@ import os
 import time
 import numpy as np
 from sys import stderr
-from src import TfIdfDataset
+from .dataset import TfIdfDataset
 from scipy.sparse import csr_matrix
 from torch.utils.data import Dataset
 from multiprocessing.pool import Pool
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 
-class Converter:
+class Converter(object):
     """数据转换器"""
     def __init__(self, dataset: Dataset, processes: int = os.cpu_count()):
         # 数据集

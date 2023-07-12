@@ -1,7 +1,7 @@
 import os
 import csv
 import numpy as np
-from src import Review
+from .models import Review
 from typing import Generator, Any
 from scipy.sparse import csr_matrix
 from torch.utils.data import Dataset

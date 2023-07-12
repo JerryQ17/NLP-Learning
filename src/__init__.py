@@ -1,9 +1,8 @@
-from .dataset import *
-from .svm import *
-from .models import *
-from .convert import *
-from .train import *
-from .lstm import *
+from .dataset import IMDBDataset, TfIdfDataset
+from .svm import SVM, SymType, KernelType
+from .convert import Converter
+from .train import Trainer
+from .lstm import LSTMModel
 
 __all__ = [
     # dataset.py
@@ -17,10 +16,6 @@ __all__ = [
     'SymType',
     'KernelType',
     'SVM',
-    # models.py
-    'Review',
-    'GridResult',
-    'NNTrainingState',
     # lstm.py
     'LSTMModel'
 ]

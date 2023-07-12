@@ -1,11 +1,11 @@
 import os
 import torch
 import signal
-from src import SVM
+from .svm import SVM
 from torch import nn
 from types import FrameType
 from torch.optim import Optimizer
-from src.models import NNTrainingState
+from .models import NNTrainingState
 from torch.utils.data import Dataset, DataLoader
 
 

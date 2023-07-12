@@ -4,7 +4,7 @@ from torch import load
 from enum import IntEnum
 from libsvm.svmutil import *
 import matplotlib.pyplot as plt
-from src.models import GridResult
+from .models import GridResult
 
 
 class SymType(IntEnum):
@@ -69,11 +69,29 @@ class SVM(object):
             nu: float = None, epsilon: float = None, cache_size: float = None, tolerance: float = None,
             shrinking: int = None, probability_estimates: int = None, weight: float = None, n_fold: int = None,
     ) -> float:
+        """
+        使用libsvm训练svm模型
+        :param problem_path: libsvm可以读取的文件路径
+        :param sym_type: set type of SVM (default 0)
+        :param kernel_type: set type of kernel function (default 2)
+        :param degree: set degree in kernel function (default 3)
+        :param gamma: set gamma in kernel function (default 1/num_features)
+        :param coef0: set coef0 in kernel function (default 0)
+        :param cost: set the parameter C of C-SVC, epsilon-SVR, and nu-SVR (default 1)
+        :param nu: set the parameter nu of nu-SVC, one-class SVM, and nu-SVR (default 0.5)
+        :param epsilon: set the epsilon in loss function of epsilon-SVR (default 0.1)
+        :param cache_size: set cache memory size in MB (default 100)
+        :param tolerance: set tolerance of termination criterion (default 0.001)
+        :param shrinking: whether to use the shrinking heuristics, 0 or 1 (default 1)
+        :param probability_estimates: whether to train an SVC or SVR model for probability estimates, 0 or 1 (default 0)
+        :param weight: set the parameter C of class i to weight*C, for C-SVC (default 1)
+        :param n_fold: n-fold cross validation mode
+        :return: 训练好的模型
+        """
         # 生成参数字符串
         kwargs = locals()
         kwargs.pop('self')
         kwargs.pop('problem_path')
-        kwargs.pop('model_path')
         param_str = ''
         for key, value in kwargs.items():
             if value is not None:
