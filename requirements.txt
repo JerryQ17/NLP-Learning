@@ -1,4 +1,4 @@
-pydantic
+pydantic==1.10.11
 numpy
 scipy
 scikit-learn
