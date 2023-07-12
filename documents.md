@@ -27,8 +27,7 @@
 
 ### class Converter
 
-`Converter`是`Dataset`和`Trainer`之间的桥梁，它提供了一些易于使用的API，可以将数据集中的原始数据转换为`SVM`
-或`Neutral Network`便于处理的数据形式，从而简化了数据处理的流程。
+`Converter`是`Dataset`和`Trainer`之间的桥梁，它提供了一些易于使用的API，可以将数据集中的原始数据转换为`SVM`或`Neutral Network`便于处理的数据形式，从而简化了数据处理的流程。
 
 >
 Tips:[`tfidf_matrix`](#Converter-tfidf-matrix) 、[`feature_names`](#Converter-feature-names) 、[`tfidf_dataset`](#Converter-tfidf-dataset)
@@ -133,7 +132,7 @@ Tips:[`tfidf_matrix`](#Converter-tfidf-matrix) 、[`feature_names`](#Converter-f
 
 ### class TfIdfDataset
 
-`TfIdfDataset`继承了`torch.utils.data.Dataset`，用于后续神经网络训练。一般由[`Converter`](#class-Converter)
+`TfIdfDataset`继承了`torch.utils.data.Dataset`，用于神经网络训练。一般由[`Converter`](#class-Converter)
 自动生成，用户不需要自行创建该类的实例。
 
 |    属性    |            类型             |    初始值     |   描述    |
@@ -163,6 +162,8 @@ Tips:[`tfidf_matrix`](#Converter-tfidf-matrix) 、[`feature_names`](#Converter-f
 [源代码](./src/lstm.py)
 
 ### class LSTMModel
+
+`LSTMModel`继承了`torch.nn.Module`，是一个`LSTM`模型，用于神经网络训练。
 
 |       属性       |         类型         |                    初始值                    |                                  描述                                  |
 |:--------------:|:------------------:|:-----------------------------------------:|:--------------------------------------------------------------------:|
