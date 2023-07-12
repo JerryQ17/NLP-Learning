@@ -142,7 +142,7 @@ class Trainer(object):
             return
         if not isinstance(model, nn.Module):
             raise TypeError('model必须是一个torch.nn.Module对象')
-        self.__model = model
+        self.__model = model.to(self.__device)
 
     @property
     def optimizer(self):
@@ -175,7 +175,7 @@ class Trainer(object):
         return self.__device
 
     @device.setter
-    def device(self, device: list[str, int] | str | int):
+    def device(self, device: list[str, int] | str | int | None):
         if device is None:
             if torch.cuda.is_available():
                 self.__device = torch.device('cuda')
@@ -188,6 +188,8 @@ class Trainer(object):
             self.__device = torch.device(device)
         else:
             raise TypeError(f'device必须是一个长度为2的列表或者是一个字符串或者是一个整数')
+        if self.__model is not None:
+            self.__model = self.__model.to(self.__device)
 
     def train(
             self,
