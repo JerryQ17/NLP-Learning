@@ -2,27 +2,30 @@
 
 ## 项目结构
 
-- directory `dataset`
-    - file `IMDB Dataset.csv`
-- directory `lstm`
-- directory `src`
-    - file `__init__.py`
-    - file [`convert.py`](#convertpy)
+- `directory` `dataset`
+    - `file` `IMDB Dataset.csv`
+- `directory` `lstm`
+- `directory` `src`
+    - `file` `__init__.py`
+    - `file` [`convert.py`](#convertpy)
         - class [`Converter`](#class-Converter)
-    - file [`dataset.py`](#datasetpy)
-        - class [`IMDBDataset`](#class-IMDBDataset)
-        - class [`TfIdfDataset`](#class-TfIdfDataset)
-    - file [`lstm.py`](#lstmpy)
-        - class [`LSTMModel`](#class-LSTMModel)
-    - file [`models.py`](#modelspy)
-        - class [`Review`](#class-Review)
-        - class [`GridResult`](#class-GridResult)
-        - class [`NNTrainingState`](#class-NNTrainingState)
-    - file [`svm.py`](#svmpy)
-    - file [`train.py`](#trainpy)
-- directory `svm`
-    - directory `model`
-    - directory `data`
+    - `file` [`dataset.py`](#datasetpy)
+        - `class` [`IMDBDataset`](#class-IMDBDataset)
+        - `class` [`TfIdfDataset`](#class-TfIdfDataset)
+    - `file` [`lstm.py`](#lstmpy)
+        - `class` [`LSTMModel`](#class-LSTMModel)
+    - `file` [`models.py`](#modelspy)
+        - `class` [`Review`](#class-Review)
+        - `class` [`GridResult`](#class-GridResult)
+        - `class` [`NNTrainingState`](#class-NNTrainingState)
+    - `file` [`svm.py`](#svmpy)
+        - `class` [`SymType`](#class-SymType)
+        - `class` [`KernelType`](#class-KernelType)
+        - `class` [`SVM`](#class-SVM)
+    - `file` [`train.py`](#trainpy)
+- `directory` `svm`
+    - `directory` `model`
+    - `directory` `data`
 
 ---
 
@@ -244,6 +247,33 @@
 ## svm.py
 
 [源代码](./src/svm.py)
+
+### class SymType
+
+[`SymType`](#class-SymType)是`int`类型的枚举，提供了5种SVM类型
+
+|       类型        |  值  |
+|:---------------:|:---:|
+|     `C_SVC`     | `0` |
+|    `NU_SVC`     | `1` |
+| `ONE_CLASS_SVM` | `2` |
+|  `EPSILON_SVR`  | `3` |
+|    `NU_SVR`     | `4` |
+
+### class KernelType
+
+[`KernelType`](#class-KernelType)是`int`类型的枚举，提供了5种核函数类型
+
+|          类型           |  值  |
+| :---------------------: | :--: |
+|        `LINEAR`         | `0`  |
+|      `POLYNOMIAL`       | `1`  |
+| `RADIAL_BASIS_FUNCTION` | `2`  |
+|        `SIGMOID`        | `3`  |
+|  `PRECOMPUTED_KERNEL`   | `4`  |
+### class SVM
+
+[`SVM`](#class-SVM)
 
 ---
 
