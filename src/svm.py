@@ -61,13 +61,26 @@ class SVM(object):
     def grid_results(self) -> list[GridResult]:
         return self.__grid_results
 
-    def load(self, model_path: str):
-        """加载模型"""
-        self.__model = svm_load_model(model_path)
+    def load(self, model: svm_model = None, model_path: str = None) -> 'SVM':
+        """加载模型，model和model_path必须至少指定一个"""
+        if model is not None:
+            if not isinstance(model, svm_model):
+                raise TypeError('model必须是svm_model类型')
+            self.__model = model
+        elif model_path is not None:
+            if not isinstance(model_path, str):
+                raise TypeError('model_path必须是str类型')
+            if not os.path.isfile(model_path):
+                raise FileNotFoundError(f'模型文件{model_path}不存在')
+            self.__model = svm_load_model(model_path)
+        else:
+            raise ValueError('model和model_path必须至少指定一个')
+        return self
 
-    def save(self, model_path: str):
+    def save(self, path: str) -> str:
         """保存模型"""
-        svm_save_model(model_path, self.__model)
+        svm_save_model(path, self.__model)
+        return os.path.abspath(path)
 
     def train(
             self, problem_path: str,
@@ -78,7 +91,7 @@ class SVM(object):
     ) -> svm_model | float:
         """
         使用libsvm训练svm模型
-        :param problem_path: libsvm可以读取的文件路径
+        :param problem_path: 标准libsvm格式训练集路径
         :param sym_type: set type of SVM (default 0)
         :param kernel_type: set type of kernel function (default 2)
         :param degree: set degree in kernel function (default 3)
@@ -95,6 +108,12 @@ class SVM(object):
         :param n_fold: n-fold cross validation mode
         :return: 训练好的模型
         """
+        if not os.path.isfile(problem_path):
+            raise FileNotFoundError(f'数据文件{problem_path}不存在')
+        if shrinking is not None and shrinking not in (0, 1):
+            raise ValueError('shrinking必须是0或1')
+        if probability_estimates is not None and probability_estimates not in (0, 1):
+            raise ValueError('probability_estimates必须是0或1')
         # 生成参数字符串
         kwargs = locals()
         kwargs.pop('self')
@@ -123,7 +142,7 @@ class SVM(object):
     ) -> tuple[list, tuple[float, float, float], list]:
         """
         使用libsvm预测
-        :param problem_path: libsvm可以读取的文件路径
+        :param problem_path: 标准libsvm格式测试集路径
         :param model: 训练好的模型
         :param model_path: 训练好的模型保存路径
         :param probability_estimates: whether to predict probability estimates, 0 or 1 (default 0)
@@ -146,6 +165,8 @@ class SVM(object):
                 print('Warning: 因为已加载模型，model参数已被忽略', file=sys.stderr)
             if model_path is not None:
                 print('Warning: 因为已加载模型，model_path参数已被忽略', file=sys.stderr)
+        if probability_estimates is not None and probability_estimates not in (0, 1):
+            raise ValueError('probability_estimates必须是0或1')
 
         # 生成参数字符串
         param_str = ''
@@ -157,7 +178,7 @@ class SVM(object):
 
     def grid(
             self,
-            problem_path: str = None, n_fold: int = 5, enable_logging: bool = False,
+            problem_path: str, n_fold: int = 5, enable_logging: bool = False,
             c_min: float = 1e-8, c_max: float = 1e8, c_step: float = 10,
             g_min: float = 1e-8, g_max: float = 1e8, g_step: float = 10,
             detailed: bool = False, img_name: str = r'..\svm\train\grid_result.png', dpi: int = 1000,
@@ -167,7 +188,7 @@ class SVM(object):
         网格搜索
         :param problem_path: 训练集文件路径
         :param n_fold: n折交叉验证
-        :param enable_logging: 是否启用运行信息记录
+        :param enable_logging: 是否打印搜索进度
         :param c_min: C的最小值
         :param c_max: C的最大值
         :param c_step: C的步长
@@ -200,8 +221,18 @@ class SVM(object):
             plt.savefig(img_name, dpi=dpi)
             plt.close()
 
+        # 检查参数
+        if not os.path.isfile(problem_path):
+            raise FileNotFoundError('训练集文件不存在')
         if from_record:
-            self.__grid_results = [GridResult(**result) for result in load(record_path)]
+            if record_path is None:
+                raise ValueError('record_path参数不能为None')
+            if not os.path.isfile(record_path):
+                raise FileNotFoundError('记录文件不存在')
+            try:
+                self.__grid_results = [GridResult(**result) for result in load(record_path)]
+            except Exception as error:
+                raise ValueError('记录文件格式错误') from error
             if len(self.__grid_results) == 0:
                 raise ValueError('记录文件为空')
             last_max_c_min = self.__grid_results[0].c_min
@@ -219,12 +250,13 @@ class SVM(object):
             last_max_g_min = g_min - 1
             c_range = _mul_range(c_min, c_max, c_step)
             g_range = _mul_range(g_min, g_max, g_step)
-
+        # 计算总epoch数
         total_epochs = len(c_range) * len(g_range)
         hour_per_epoch = 0.25
         if enable_logging:
             print('total epochs:', total_epochs, 'epochs')
             print('expected time:', total_epochs * hour_per_epoch, 'hours')
+        # 开始搜索
         start_time = time.time()
         for c in c_range:
             for g in g_range:
@@ -244,6 +276,7 @@ class SVM(object):
                     current = time.time()
                     print(f'epoch {len(self.__grid_results)} finished, time elapsed: {current - start_time} seconds')
                     hour_per_epoch = (current - start_time) / len(self.__grid_results) / 3600
+        # 结束搜索
         if enable_logging:
             print('-' * 50)
             print('grid search finished')

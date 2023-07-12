@@ -264,16 +264,153 @@
 
 [`KernelType`](#class-KernelType)是`int`类型的枚举，提供了5种核函数类型
 
-|          类型           |  值  |
-| :---------------------: | :--: |
-|        `LINEAR`         | `0`  |
-|      `POLYNOMIAL`       | `1`  |
-| `RADIAL_BASIS_FUNCTION` | `2`  |
-|        `SIGMOID`        | `3`  |
-|  `PRECOMPUTED_KERNEL`   | `4`  |
+|           类型            |  值  |
+|:-----------------------:|:---:|
+|        `LINEAR`         | `0` |
+|      `POLYNOMIAL`       | `1` |
+| `RADIAL_BASIS_FUNCTION` | `2` |
+|        `SIGMOID`        | `3` |
+|  `PRECOMPUTED_KERNEL`   | `4` |
 ### class SVM
 
-[`SVM`](#class-SVM)
+[`SVM`](#class-SVM)提供了对SVM模型的封装，可以进行训练、预测、保存和加载等操作
+
+|       属性       |                   类型                    |  初始值   |    描述     |
+|:--------------:|:---------------------------------------:|:------:|:---------:|
+|    `model`     |       `libsvm.svmutil.svm_model`        | `None` |   SVM模型   |
+| `grid_results` | [`list[GridResult]`](#class-GridResult) | `None` | 网格搜索的结果列表 |
+
+
+#### method \_\_init__()
+
+初始化一个`SVM`实例
+
+##### 输入
+
+`None`
+
+##### 输出
+
+`None`
+
+#### method load()
+
+加载一个SVM模型，`model`和`model_path`至少有一个不为`None`，若两者都不为`None`，则`model`优先
+
+##### 输入
+
+|      参数      |             类型             |  初始值   |  描述   |
+|:------------:|:--------------------------:|:------:|:-----:|
+|   `model`    | `libsvm.svmutil.svm_model` | `None` | SVM模型 |
+| `model_path` |           `str`            | `None` | 模型路径  |
+
+##### 输出
+
+这个实例自身，即`self`
+
+#### method save()
+
+保存一个SVM模型
+
+##### 输入
+
+|   参数   |  类型   |    初始值     |   描述   |
+|:------:|:-----:|:----------:|:------:|
+| `path` | `str` | `Required` | 模型保存路径 |
+
+##### 输出
+
+保存路径的绝对路径
+
+#### method train()
+
+训练一个SVM模型
+
+##### 输入
+
+|           参数            |                类型                 |    初始值     |                                        描述                                         |
+|:-----------------------:|:---------------------------------:|:----------:|:---------------------------------------------------------------------------------:|
+|     `problem_path`      |               `str`               | `Required` |                                  标准libsvm格式训练集路径                                  |
+|       `sym_type`        |    [`SymType`](#class-SymType)    |   `None`   |                            set type of SVM (default 0)                            |
+|      `kernel_type`      | [`KernelType`](#class-KernelType) |   `None`   |                      set type of kernel function (default 2)                      |
+|        `degree`         |               `int`               |   `None`   |                       degree in kernel function (default 3)                       |
+|         `gamma`         |              `float`              |   `None`   |                 gamma in kernel function (default 1/num_features)                 |
+|         `coef0`         |              `float`              |   `None`   |                       coef0 in kernel function (default 0)                        |
+|         `cost`          |              `float`              |   `None`   |                cost in C-SVC, epsilon-SVR, and nu-SVR (default 1)                 |
+|          `nu`           |              `float`              |   `None`   |               nu in nu-SVC, one-class SVM, and nu-SVR (default 0.5)               |
+|        `epsilon`        |              `float`              |   `None`   |             the epsilon in loss function of epsilon-SVR (default 0.1)             |
+|      `cache_size`       |              `float`              |   `None`   |                     set cache memory size in MB (default 100)                     |
+|       `tolerance`       |              `float`              |   `None`   |              set tolerance of termination criterion (default 0.001)               |
+|       `shrinking`       |               `int`               |   `None`   |            whether to use the shrinking heuristics, 0 or 1 (default 1)            |
+| `probability_estimates` |               `int`               |   `None`   | whether to train a SVC or SVR model for probability estimates, 0 or 1 (default 0) |
+|        `weight`         |              `float`              |   `None`   |           the parameter C of class i to weight*C, for C-SVC (default 1)           |
+|        `n_fold`         |               `int`               |   `None`   |                           n-fold cross validation mode                            |
+
+##### 输出
+
+训练结果，当`n_fold`不为`None`时，返回交叉验证的结果，否则返回训练的模型
+
+#### method predict()
+
+预测一个SVM模型。
+
+当`self.model is None`时，`model`和`model_path`至少有一个不为`None`，若两者都不为`None`，则`model`优先。
+当`self.model is not None`时，忽略`model`和`model_path`参数。
+
+##### 输入
+
+|           参数            |             类型             |    初始值     |                                        描述                                         |
+|:-----------------------:|:--------------------------:|:----------:|:---------------------------------------------------------------------------------:|
+|     `problem_path`      |           `str`            | `Required` |                                  标准libsvm格式测试集路径                                  |
+|         `model`         | `libsvm.svmutil.svm_model` |   `None`   |                                      训练好的模型                                       |
+|      `model_path`       |           `str`            |   `None`   |                                     训练好的模型的路径                                     |
+| `probability_estimates` |           `int`            |   `None`   | whether to train a SVC or SVR model for probability estimates, 0 or 1 (default 0) |
+
+##### 输出
+
+- `tuple[list, tuple[float, float, float], list]`
+  - `list` p_labels: A list of predicted labels
+  - `tuple[float, float, float]` p_acc
+    - `float` accuracy (for classification)
+    - `float` mean-squared error
+    - `float` squared correlation coefficient (for regression)
+  - `list` p_vals: A list of decision values or probability estimates (if `probability_estimates == 1`). If `k` is the number of classes, for decision values, each element includes results of predicting `k(k-1)/2` binary-class SVMs. For probabilities, each element contains `k` values indicating the probability that the testing instance is in each class. Note that the order of classes here is the same as 'model.label' field in the model structure.
+
+#### method grid()
+
+网格搜索，寻找最优参数。
+
+因为筛选过程耗时很久，所以增加了程序终止时自动保存功能（使用`Trainer`），并且可以从中断处继续训练。
+
+如果要从中断处恢复训练，应设置`from_record = True`，`record_path = {your_file_path}`，`your_file_path`为自动保存的训练状态文件，保持训练参数和原来的训练参数一致。（具体来说，训练参数是指`problem_path`、`c_min`、`c_max`、`c_step`、`g_min`、`g_max`、`g_step`）
+此处的`problem_path`与原来一致是指该路径指定的训练集文件内容不变。
+
+> 后续版本将会改进自动保存机制，恢复训练将不需要输入训练参数，而是从保存文件中自动读取。
+
+##### 输入
+
+|        参数        |   类型    |                初始值                |                                           描述                                            |
+|:----------------:|:-------:|:---------------------------------:|:---------------------------------------------------------------------------------------:|
+|  `problem_path`  |  `str`  |              `None`               |                                     标准libsvm格式训练集路径                                     |
+|     `n_fold`     |  `int`  |                `5`                |                                         交叉验证折数                                          |
+| `enable_logging` | `bool`  |              `False`              |                                        是否打印搜索进度                                         |
+|     `c_min`      | `float` |              `1e-8`               |                                        Cost的最小值                                         |
+|     `c_max`      | `float` |               `1e8`               |                                        Cost的最大值                                         |
+|     `c_step`     | `float` |               `10`                |                                         Cost的步长                                         |
+|     `g_min`      | `float` |              `1e-8`               |                                        gamma的最小值                                        |
+|     `g_max`      | `float` |               `1e8`               |                                        gamma的最大值                                        |
+|     `g_step`     | `float` |               `10`                |                                        gamma的步长                                         |
+|    `detailed`    | `bool`  |              `False`              | 是否返回详细信息<br/>`detailed = True`时，返回所有搜索结果的列表，并绘制结果图像<br/>`detailed = False`时，只返回准确度最高的结果 |
+|    `img_name`    |  `str`  | `r'..\svm\train\grid_result.png'` |                                         保存的图片名                                          |
+|      `dpi`       |  `int`  |              `1000`               |                                         图片的dpi                                          |
+|  `from_record`   | `bool`  |              `False`              |                                       是否从记录文件中读取                                        |
+|  `record_path`   |  `str`  |              `None`               |                                         记录文件路径                                          |
+
+##### 输出
+
+`detailed = True`时，返回所有搜索结果的列表，并绘制结果图像
+`detailed = False`时，只返回准确度最高的结果
+
 
 ---
 
@@ -282,3 +419,4 @@
 [源代码](./src/train.py)
 
 ---
+
