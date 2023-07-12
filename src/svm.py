@@ -3,8 +3,9 @@ from math import log
 from torch import load
 from enum import IntEnum
 from libsvm.svmutil import *
-import matplotlib.pyplot as plt
 from .models import GridResult
+import matplotlib.pyplot as plt
+from libsvm.svm import svm_model
 
 
 class SymType(IntEnum):
@@ -43,7 +44,7 @@ class SVM(object):
     }
 
     def __init__(self):
-        self.__model = None
+        self.__model: svm_model | None = None
         self.__grid_results: list[GridResult] = []
 
     @property
@@ -68,7 +69,7 @@ class SVM(object):
             degree: int = None, gamma: float = None, coef0: float = None, cost: float = None,
             nu: float = None, epsilon: float = None, cache_size: float = None, tolerance: float = None,
             shrinking: int = None, probability_estimates: int = None, weight: float = None, n_fold: int = None,
-    ) -> float:
+    ) -> svm_model | float:
         """
         使用libsvm训练svm模型
         :param problem_path: libsvm可以读取的文件路径
@@ -110,7 +111,7 @@ class SVM(object):
     def predict(
             self,
             problem_path: str,
-            model=None,
+            model: svm_model = None,
             model_path: str = None,
             probability_estimates: int = None,
     ) -> tuple[list, tuple[float, float, float], list]:
