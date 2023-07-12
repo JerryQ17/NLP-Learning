@@ -1,5 +1,7 @@
 # 自然语言处理实践
 
+<a href="https://pytorch.org/get-started/locally/"><img alt="PyTorch" src="./assets/PyTorch-ee4c2c.svg+xml"></a>[![Stars](./assets/{repo}.svg+xml)](https://github.com/JerryQ17/NLP-Learning/stargazers)
+
 ## 目录
 
 - [目录](#目录)
@@ -95,6 +97,10 @@ deactivate
 ## 实验过程
 
 本部分使用我封装过的代码来描述实验过程，具体的内部实现不在此赘述。
+
+### TF-IDF
+
+### Word to Vec
 
 ---
 
