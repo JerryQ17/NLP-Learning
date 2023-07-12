@@ -1,11 +1,17 @@
+import os
+import sys
 import time
 from math import log
 from torch import load
 from enum import IntEnum
-from libsvm.svmutil import *
 from .models import GridResult
 import matplotlib.pyplot as plt
-from libsvm.svm import svm_model
+from libsvm.svmutil import (
+    svm_model,
+    svm_train, svm_predict,
+    svm_save_model, svm_load_model,
+    svm_read_problem
+)
 
 
 class SymType(IntEnum):
