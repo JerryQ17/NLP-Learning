@@ -1,6 +1,6 @@
 # 自然语言处理实践
 
-<a href="https://pytorch.org/get-started/locally/"><img alt="PyTorch" src="./assets/PyTorch-ee4c2c.svg+xml"></a>[![Stars](./assets/{repo}.svg+xml)](https://github.com/JerryQ17/NLP-Learning/stargazers)
+![Static Badge](./assets/GitHub-JerryQ17-yellow.svg+xml)
 
 ## 目录
 
