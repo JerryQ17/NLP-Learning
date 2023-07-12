@@ -4,20 +4,25 @@
 
 - directory `dataset`
     - file `IMDB Dataset.csv`
+- directory `lstm`
 - directory `src`
     - file `__init__.py`
-    - file [`convert.py`](#convert.py)
+    - file [`convert.py`](#convertpy)
         - class [`Converter`](#class-Converter)
-    - file [`dataset.py`](#dataset.py)
-        - class [`IMDBDataset`](#class IMDBDataset)
-        - class [`TfIdfDataset`](#class TfIdfDataset)
-    - file [`lstm.py`](#lstm.py)
-    - file [`models.py`](#models.py)
-    - file [`svm.py`](#svm.py)
-    - file [`train.py`](#train.py)
+    - file [`dataset.py`](#datasetpy)
+        - class [`IMDBDataset`](#class-IMDBDataset)
+        - class [`TfIdfDataset`](#class-TfIdfDataset)
+    - file [`lstm.py`](#lstmpy)
+        - class [`LSTMModel`](#class-LSTMModel)
+    - file [`models.py`](#modelspy)
+        - class [`Review`](#class-Review)
+        - class [`GridResult`](#class-GridResult)
+        - class [`NNTrainingState`](#class-NNTrainingState)
+    - file [`svm.py`](#svmpy)
+    - file [`train.py`](#trainpy)
 - directory `svm`
     - directory `model`
-    - directory `train`
+    - directory `data`
 
 ---
 
@@ -27,17 +32,14 @@
 
 ### class Converter
 
-`Converter`是`Dataset`和`Trainer`之间的桥梁，它提供了一些易于使用的API，可以将数据集中的原始数据转换为`SVM`或`Neutral Network`便于处理的数据形式，从而简化了数据处理的流程。
+[`Converter`](#class-Converter)是[`IMDBDataset`](#class-IMDBDataset)和`Trainer`之间的桥梁，它提供了一些易于使用的API，可以将数据集中的原始数据转换为`SVM`或`Neutral Network`便于处理的数据形式，从而简化了数据处理的流程。
 
->
-Tips:[`tfidf_matrix`](#Converter-tfidf-matrix) 、[`feature_names`](#Converter-feature-names) 、[`tfidf_dataset`](#Converter-tfidf-dataset)
-属性无需显式调用`tfidf()`
-> 方法，内部会自动调用。即使你改变了[`dataset`](#Converter-dataset)属性，这些属性也会自动更新。
+> Tips:[`tfidf_matrix`](#Converter-tfidf-matrix)、[`feature_names`](#Converter-feature-names)、[`tfidf_dataset`](#Converter-tfidf-dataset)属性无需显式调用[`tfidf()`](#method-tfidf())方法，内部会自动调用。即使你改变了[`dataset`](#Converter-dataset)属性，这些属性也会自动更新。
 
 |                         属性                          |             类型             |       初始值        |                              描述                               |
 |:---------------------------------------------------:|:--------------------------:|:----------------:|:-------------------------------------------------------------:|
 |       <a id="Converter-dataset">`dataset`</a>       | `torch.utils.data.Dataset` |    `Required`    |                            要转换的数据集                            |
-|                     `processes`                     |           `int`            | `os.cpu_count()` |                        `to_svm`方法的进程数                         |
+|                     `processes`                     |           `int`            | `os.cpu_count()` |                          多进程并行处理的进程数                          |
 |  <a id="Converter-tfidf-matrix">`tfidf_matrix`</a>  | `scipy.sparse.csr_matrix`  |        /         |          [`dataset`](#Converter-dataset)的`tfidf`值矩阵           |
 | <a id="Converter-feature-names">`feature_names`</a> |      `numpy.ndarray`       |        /         |             [`dataset`](#Converter-dataset)的特征单词              |
 |                       `items`                       |           `list`           |        /         |             [`dataset`](#Converter-dataset)中的所有元素             |
@@ -46,7 +48,7 @@ Tips:[`tfidf_matrix`](#Converter-tfidf-matrix) 、[`feature_names`](#Converter-f
 
 #### method \_\_init__()
 
-初始化一个`Converter`实例
+初始化一个[`Converter`](#class-Converter)实例
 
 ##### 输入
 
@@ -61,8 +63,7 @@ Tips:[`tfidf_matrix`](#Converter-tfidf-matrix) 、[`feature_names`](#Converter-f
 
 #### method tfidf()
 
-计算数据集的TF-IDF表示，同时更新自身的[`tfidf_matrix`](#Converter-tfidf-matrix) 、[`feature_names`](#Converter-feature-names) 、[`tfidf_dataset`](#Converter-tfidf-dataset)
-属性，返回[`tfidf_dataset`](#Converter-tfidf-dataset)
+计算数据集的TF-IDF表示，同时更新自身的[`tfidf_matrix`](#Converter-tfidf-matrix)、[`feature_names`](#Converter-feature-names)、[`tfidf_dataset`](#Converter-tfidf-dataset)属性，返回[`tfidf_dataset`](#Converter-tfidf-dataset)
 
 ##### 输入
 
@@ -70,7 +71,7 @@ Tips:[`tfidf_matrix`](#Converter-tfidf-matrix) 、[`feature_names`](#Converter-f
 
 ##### 输出
 
-一个`dataset.TfIdfDataset`实例，其实就是[`self.tfidf_dataset`](#Converter-tfidf-dataset)
+一个[`dataset.TfIdfDataset`](#class-TfIdfDataset)实例，其实就是[`self.tfidf_dataset`](#Converter-tfidf-dataset)
 
 #### method word2vec() **TODO**
 
@@ -101,18 +102,18 @@ Tips:[`tfidf_matrix`](#Converter-tfidf-matrix) 、[`feature_names`](#Converter-f
 
 ### class IMDBDataset
 
-`IMDBDataset`继承了`torch.utils.data.Dataset`，它从`csv`文件中读取数据集，转化为特定的数据结构，便于开展后续的数据处理工作。
+[`IMDBDataset`](#class-IMDBDataset)继承了`torch.utils.data.Dataset`，它从`csv`文件中读取数据集，转化为特定的数据结构，便于开展后续的数据处理工作。
 
 > Tips: `IMDBDataset`是可迭代的
 
-|         属性          |       类型        |    初始值     |                                      描述                                      |
-|:-------------------:|:---------------:|:----------:|:----------------------------------------------------------------------------:|
-|    `save_memory`    |     `bool`      |  `False`   |                                **只读**，是否节省内存                                 |
-| `get_item_by_tuple` |     `bool`      |  `False`   | `True`时，`__getitem__()`方法返回一个元组<br/>`False`时，`__getitem__()`方法返回一个`Review`实例 |
-| `dataset_pathname`  |      `str`      | `Required` |                             `csv`文件的路径，**必须**存在                              |
-|   `dataset_title`   |      `str`      |     /      |                           **只读**，`csv`文件的文件名，自动更新                            |
-|       `item`        |    `Review`     |     /      |                 **只读**，数据集中的当前项<br/>`save_memory = False`时无效                 |
-|       `items`       | `numpy.ndarray` |     /      |               **只读**，数据集中的所有项<br/>`save_memory = True`时为`None`               |
+|         属性          |            类型             |    初始值     |                                              描述                                               |
+|:-------------------:|:-------------------------:|:----------:|:---------------------------------------------------------------------------------------------:|
+|    `save_memory`    |          `bool`           |  `False`   |                                         **只读**，是否节省内存                                         |
+| `get_item_by_tuple` |          `bool`           |  `False`   | `True`时，`__getitem__()`方法返回一个元组<br/>`False`时，`__getitem__()`方法返回一个[`Review`](#class-Review)实例 |
+| `dataset_pathname`  |           `str`           | `Required` |                                      `csv`文件的路径，**必须**存在                                      |
+|   `dataset_title`   |           `str`           |     /      |                                    **只读**，`csv`文件的文件名，自动更新                                    |
+|       `item`        | [`Review`](#class-Review) |     /      |                         **只读**，数据集中的当前项<br/>`save_memory = False`时无效                          |
+|       `items`       |      `numpy.ndarray`      |     /      |                       **只读**，数据集中的所有项<br/>`save_memory = True`时为`None`                        |
 
 #### method \_\_init__()
 
@@ -120,11 +121,11 @@ Tips:[`tfidf_matrix`](#Converter-tfidf-matrix) 、[`feature_names`](#Converter-f
 
 ##### 输入
 
-|         参数          |   类型   |    初始值     |                                      描述                                      |
-|:-------------------:|:------:|:----------:|:----------------------------------------------------------------------------:|
-| `dataset_pathname`  | `str`  | `Required` |                                数据集路径，**必须**存在                                |
-|    `save_memory`    | `bool` |  `False`   |                                    是否节省内存                                    |
-| `get_item_by_tuple` | `bool` |  `False`   | `True`时，`__getitem__()`方法返回一个元组<br/>`False`时，`__getitem__()`方法返回一个`Review`实例 |
+|         参数          |   类型   |    初始值     |                                              描述                                               |
+|:-------------------:|:------:|:----------:|:---------------------------------------------------------------------------------------------:|
+| `dataset_pathname`  | `str`  | `Required` |                                        数据集路径，**必须**存在                                         |
+|    `save_memory`    | `bool` |  `False`   |                                            是否节省内存                                             |
+| `get_item_by_tuple` | `bool` |  `False`   | `True`时，`__getitem__()`方法返回一个元组<br/>`False`时，`__getitem__()`方法返回一个[`Review`](#class-Review)实例 |
 
 ##### 输出
 
@@ -132,8 +133,9 @@ Tips:[`tfidf_matrix`](#Converter-tfidf-matrix) 、[`feature_names`](#Converter-f
 
 ### class TfIdfDataset
 
-`TfIdfDataset`继承了`torch.utils.data.Dataset`，用于神经网络训练。一般由[`Converter`](#class-Converter)
-自动生成，用户不需要自行创建该类的实例。
+[`TfIdfDataset`](#class-TfIdfDataset)继承了`torch.utils.data.Dataset`，用于神经网络训练。
+
+一般由[`Converter`](#class-Converter)自动生成，用户**不需要**自行创建该类的实例。
 
 |    属性    |            类型             |    初始值     |   描述    |
 |:--------:|:-------------------------:|:----------:|:-------:|
@@ -203,6 +205,39 @@ Tips:[`tfidf_matrix`](#Converter-tfidf-matrix) 、[`feature_names`](#Converter-f
 ## models.py
 
 [源代码](./src/models.py)
+
+### class Review
+
+[`Review`](#class-Review)继承了[`pydantic.BaseModel`](https://docs.pydantic.dev/1.10/usage/models/)，一个[`Review`](#class-Review)实例描述了一个电影评论
+
+|     属性      |   类型   |    初始值     |  描述  |
+|:-----------:|:------:|:----------:|:----:|
+|  `review`   | `str`  | `Required` | 评论内容 |
+| `sentiment` | `bool` | `Required` | 情感标签 |
+
+### class GridResult
+
+[`GridResult`](#class-GridResult)继承了[`pydantic.BaseModel`](https://docs.pydantic.dev/1.10/usage/models/)，一个[`GridResult`](#class-GridResult)实例描述了一个网格搜索的结果
+
+|   属性    |   类型    |    初始值     |    描述     |
+|:-------:|:-------:|:----------:|:---------:|
+| `c_min` | `float` | `Required` |   惩罚系数    |
+| `c_max` | `float` | `Required` | 惩罚系数乘以步进  |
+| `g_min` | `float` | `Required` |   核函数参数   |
+| `g_max` | `float` | `Required` | 核函数参数乘以步进 |
+| `rate`  | `float` | `Required` |    准确率    |
+
+### class NNTrainingState
+
+[`NNTrainingState`](#class-NNTrainingState)继承了[`pydantic.BaseModel`](https://docs.pydantic.dev/1.10/usage/models/)，一个[`NNTrainingState`](#class-NNTrainingState)实例描述了一个神经网络训练的状态
+
+|           属性           |   类型   | 初始值  |   描述   |
+|:----------------------:|:------:|:----:|:------:|
+|    `current_epoch`     | `int`  | `0`  | 当前训练轮次 |
+|     `total_epoch`      | `int`  | `0`  | 总训练轮次  |
+|   `model_state_dict`   | `dict` | `{}` |  模型参数  |
+| `optimizer_state_dict` | `dict` | `{}` | 优化器参数  |
+
 
 ---
 
