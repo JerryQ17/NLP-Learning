@@ -6,7 +6,7 @@ class LSTMModel(nn.Module):
     def __init__(
             self,
             input_dim: int, hidden_dim: int, num_layers: int, output_dim: int,
-            fc: nn.Module = None, droupout_rate: float = 0,
+            fc: nn.Module = None, dropout_rate: float = 0,
             device: torch.device = torch.device('cpu')
     ):
         super().__init__()
@@ -39,7 +39,7 @@ class LSTMModel(nn.Module):
         # droupout层
         self.__dropout_rate: float | None = None
         self.__dropout: nn.Dropout | None = None
-        self.dropout_rate = droupout_rate
+        self.dropout_rate = dropout_rate
         # sigmoid层
         self.__sigmoid = nn.Sigmoid().to(self.__device)
 

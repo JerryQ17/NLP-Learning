@@ -40,15 +40,15 @@
 
 > Tips:[`tfidf_matrix`](#Converter-tfidf-matrix)、[`feature_names`](#Converter-feature-names)、[`tfidf_dataset`](#Converter-tfidf-dataset)属性无需显式调用[`tfidf()`](#method-tfidf())方法，内部会自动调用。即使你改变了[`dataset`](#Converter-dataset)属性，这些属性也会自动更新。
 
-|                        属性                         |                             类型                             |                            初始值                            |                             描述                             |
-| :-------------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: |
-|       <a id="Converter-dataset">`dataset`</a>       | [`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html?highlight=dataset#torch.utils.data.Dataset) |                          `Required`                          |                        要转换的数据集                        |
-|                     `processes`                     |                            `int`                             | [`os.cpu_count()`](https://docs.python.org/zh-cn/3/library/os.html?highlight=os cpu_count#os.cpu_count) |                    多进程并行处理的进程数                    |
-|  <a id="Converter-tfidf-matrix">`tfidf_matrix`</a>  | [`scipy.sparse.csr_matrix`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html) |                              /                               |        [`dataset`](#Converter-dataset)的`tfidf`值矩阵        |
-| <a id="Converter-feature-names">`feature_names`</a> | [`numpy.ndarray`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) |                              /                               |          [`dataset`](#Converter-dataset)的特征单词           |
-|                       `items`                       |                            `list`                            |                              /                               |         [`dataset`](#Converter-dataset)中的所有元素          |
-|                  `items_generator`                  |                         `Generator`                          |                              /                               |     [`dataset`](#Converter-dataset)中的所有元素的生成器      |
-| <a id="Converter-tfidf-dataset">`tfidf_dataset`</a> |        [`dataset.TfIdfDataset`](#class-TfIdfDataset)         |                              /                               | 包含了[`dataset`](#Converter-dataset)的`tfidf`和`label`的数据集，用于后续训练 |
+|                         属性                          |                                                         类型                                                         |                                                   初始值                                                   |                              描述                               |
+|:---------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------:|:-------------------------------------------------------------------------------------------------------:|:-------------------------------------------------------------:|
+|       <a id="Converter-dataset">`dataset`</a>       | [`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html?highlight=dataset#torch.utils.data.Dataset) |                                               `Required`                                                |                            要转换的数据集                            |
+|                     `processes`                     |                                                       `int`                                                        | [`os.cpu_count()`](https://docs.python.org/zh-cn/3/library/os.html?highlight=os cpu_count#os.cpu_count) |                          多进程并行处理的进程数                          |
+|  <a id="Converter-tfidf-matrix">`tfidf_matrix`</a>  |   [`scipy.sparse.csr_matrix`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html)   |                                                    /                                                    |          [`dataset`](#Converter-dataset)的`tfidf`值矩阵           |
+| <a id="Converter-feature-names">`feature_names`</a> |               [`numpy.ndarray`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html)               |                                                    /                                                    |             [`dataset`](#Converter-dataset)的特征单词              |
+|                       `items`                       |                                                       `list`                                                       |                                                    /                                                    |             [`dataset`](#Converter-dataset)中的所有元素             |
+|                  `items_generator`                  |                                                    `Generator`                                                     |                                                    /                                                    |           [`dataset`](#Converter-dataset)中的所有元素的生成器           |
+| <a id="Converter-tfidf-dataset">`tfidf_dataset`</a> |                                   [`dataset.TfIdfDataset`](#class-TfIdfDataset)                                    |                                                    /                                                    | 包含了[`dataset`](#Converter-dataset)的`tfidf`和`label`的数据集，用于后续训练 |
 
 #### method \_\_init__()
 
@@ -56,10 +56,10 @@
 
 ##### 输入
 
-|    参数     |                             类型                             |                            初始值                            |         描述         |
-| :---------: | :----------------------------------------------------------: | :----------------------------------------------------------: | :------------------: |
-|  `dataset`  | [`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html?highlight=dataset#torch.utils.data.Dataset) |                          `Required`                          |    要转换的数据集    |
-| `processes` |                            `int`                             | [`os.cpu_count()`](https://docs.python.org/zh-cn/3/library/os.html?highlight=os cpu_count#os.cpu_count) | `to_svm`方法的进程数 |
+|     参数      |                                                         类型                                                         |                                                   初始值                                                   |       描述       |
+|:-----------:|:------------------------------------------------------------------------------------------------------------------:|:-------------------------------------------------------------------------------------------------------:|:--------------:|
+|  `dataset`  | [`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html?highlight=dataset#torch.utils.data.Dataset) |                                               `Required`                                                |    要转换的数据集     |
+| `processes` |                                                       `int`                                                        | [`os.cpu_count()`](https://docs.python.org/zh-cn/3/library/os.html?highlight=os cpu_count#os.cpu_count) | `to_svm`方法的进程数 |
 
 ##### 输出
 
@@ -112,14 +112,14 @@
 
 > Tips: `IMDBDataset`是可迭代的
 
-|        属性         |                             类型                             |   初始值   |                             描述                             |
-| :-----------------: | :----------------------------------------------------------: | :--------: | :----------------------------------------------------------: |
-|    `save_memory`    |                            `bool`                            |  `False`   |                    **只读**，是否节省内存                    |
-| `get_item_by_tuple` |                            `bool`                            |  `False`   | `True`时，`__getitem__()`方法返回一个元组<br/>`False`时，`__getitem__()`方法返回一个[`Review`](#class-Review)实例 |
-| `dataset_pathname`  |                            `str`                             | `Required` |                `csv`文件的路径，**必须**存在                 |
-|   `dataset_title`   |                            `str`                             |     /      |            **只读**，`csv`文件的文件名，自动更新             |
-|       `item`        |               [`models.Review`](#class-Review)               |     /      |  **只读**，数据集中的当前项<br/>`save_memory = False`时无效  |
-|       `items`       | [`numpy.ndarray`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) |     /      | **只读**，数据集中的所有项<br/>`save_memory = True`时为`None` |
+|         属性          |                                           类型                                           |    初始值     |                                              描述                                               |
+|:-------------------:|:--------------------------------------------------------------------------------------:|:----------:|:---------------------------------------------------------------------------------------------:|
+|    `save_memory`    |                                         `bool`                                         |  `False`   |                                         **只读**，是否节省内存                                         |
+| `get_item_by_tuple` |                                         `bool`                                         |  `False`   | `True`时，`__getitem__()`方法返回一个元组<br/>`False`时，`__getitem__()`方法返回一个[`Review`](#class-Review)实例 |
+| `dataset_pathname`  |                                         `str`                                          | `Required` |                                      `csv`文件的路径，**必须**存在                                      |
+|   `dataset_title`   |                                         `str`                                          |     /      |                                    **只读**，`csv`文件的文件名，自动更新                                    |
+|       `item`        |                            [`models.Review`](#class-Review)                            |     /      |                         **只读**，数据集中的当前项<br/>`save_memory = False`时无效                          |
+|       `items`       | [`numpy.ndarray`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) |     /      |                       **只读**，数据集中的所有项<br/>`save_memory = True`时为`None`                        |
 
 #### method \_\_init__()
 
@@ -143,10 +143,10 @@
 
 一般由[`Converter`](#class-Converter)自动生成，用户**不需要**自行创建该类的实例。
 
-|   属性   |                             类型                             |   初始值   |   描述   |
-| :------: | :----------------------------------------------------------: | :--------: | :------: |
+|    属性    |                                                       类型                                                       |    初始值     |   描述    |
+|:--------:|:--------------------------------------------------------------------------------------------------------------:|:----------:|:-------:|
 | `values` | [`scipy.sparse.csr_matrix`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html) | `Required` | TF-IDF值 |
-| `labels` | [`numpy.ndarray`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) | `Required` | 情感标签 |
+| `labels` |             [`numpy.ndarray`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html)             | `Required` |  情感标签   |
 
 #### method \_\_init__()
 
@@ -154,10 +154,10 @@
 
 ##### 输入
 
-|   参数   |                             类型                             |   初始值   |   描述   |
-| :------: | :----------------------------------------------------------: | :--------: | :------: |
+|    参数    |                                                       类型                                                       |    初始值     |   描述    |
+|:--------:|:--------------------------------------------------------------------------------------------------------------:|:----------:|:-------:|
 | `values` | [`scipy.sparse.csr_matrix`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html) | `Required` | TF-IDF值 |
-| `labels` | [`numpy.ndarray`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) | `Required` | 情感标签 |
+| `labels` |             [`numpy.ndarray`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html)             | `Required` |  情感标签   |
 
 ##### 输出
 
@@ -173,18 +173,18 @@
 
 [`LSTMModel`](#class-LSTMModel)继承了[`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module)，是一个`LSTM`模型，用于神经网络训练。
 
-|      属性      |                             类型                             |                            初始值                            |                             描述                             |
-| :------------: | :----------------------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: |
-|    `device`    | [`torch.device`](https://pytorch.org/docs/stable/tensor_attributes.html?highlight=device#torch.device) |                    `torch.device('cpu')`                     |                **只读**，训练模型时使用的设备                |
-|  `input_dim`   |                            `int`                             |                          `Required`                          |                      **只读**，输入维数                      |
-|  `hidden_dim`  |                            `int`                             |                          `Required`                          |                     **只读**，隐藏层维数                     |
-|  `output_dim`  |                            `int`                             |                          `Required`                          |                      **只读**，输出维数                      |
-|  `num_layers`  |                            `int`                             |                          `Required`                          |                      **只读**，LSTM层数                      |
-|     `lstm`     | [`torch.nn.LSTM`](https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html?highlight=torch+nn+lstm#torch.nn.LSTM) |                              /                               |                      **只读**，LSTM模型                      |
-|      `fc`      | [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) | [`torch.nn.Linear(hidden_dim, output_dim)`](https://pytorch.org/docs/stable/generated/torch.nn.Linear.html?highlight=torch+nn+linear#torch.nn.Linear) |                    **只读**，全连接层模型                    |
-| `dropout_rate` |                           `float`                            |                             `0`                              | `dropout_rate∈[0,1]`<br/>`dropout`层要丢弃的神经元的比例<br/>等于`0`时禁用`dropout`层 |
-|   `dropout`    | [`torch.nn.Dropout`](https://pytorch.org/docs/stable/generated/torch.nn.Dropout.html?highlight=torch+nn+dropout#torch.nn.Dropout) |                              /                               |   **只读**，`dropout`层模型，与`dropout_rate`属性自动同步    |
-|   `sigmoid`    | [`torch.nn.Sigmoid`](https://pytorch.org/docs/stable/generated/torch.nn.Sigmoid.html?highlight=torch+nn+sigmoid#torch.nn.Sigmoid) |                              /                               |                  **只读**，`Sigmoid`层模型                   |
+|       属性       |                                                                类型                                                                 |                                                                          初始值                                                                          |                                  描述                                  |
+|:--------------:|:---------------------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------:|
+|    `device`    |              [`torch.device`](https://pytorch.org/docs/stable/tensor_attributes.html?highlight=device#torch.device)               |                                                                 `torch.device('cpu')`                                                                 |                          **只读**，训练模型时使用的设备                           |
+|  `input_dim`   |                                                               `int`                                                               |                                                                      `Required`                                                                       |                             **只读**，输入维数                              |
+|  `hidden_dim`  |                                                               `int`                                                               |                                                                      `Required`                                                                       |                             **只读**，隐藏层维数                             |
+|  `output_dim`  |                                                               `int`                                                               |                                                                      `Required`                                                                       |                             **只读**，输出维数                              |
+|  `num_layers`  |                                                               `int`                                                               |                                                                      `Required`                                                                       |                            **只读**，LSTM层数                             |
+|     `lstm`     |       [`torch.nn.LSTM`](https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html?highlight=torch+nn+lstm#torch.nn.LSTM)       |                                                                           /                                                                           |                            **只读**，LSTM模型                             |
+|      `fc`      |   [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module)   | [`torch.nn.Linear(hidden_dim, output_dim)`](https://pytorch.org/docs/stable/generated/torch.nn.Linear.html?highlight=torch+nn+linear#torch.nn.Linear) |                            **只读**，全连接层模型                             |
+| `dropout_rate` |                                                              `float`                                                              |                                                                          `0`                                                                          | `dropout_rate∈[0,1]`<br/>`dropout`层要丢弃的神经元的比例<br/>等于`0`时禁用`dropout`层 |
+|   `dropout`    | [`torch.nn.Dropout`](https://pytorch.org/docs/stable/generated/torch.nn.Dropout.html?highlight=torch+nn+dropout#torch.nn.Dropout) |                                                                           /                                                                           |              **只读**，`dropout`层模型，与`dropout_rate`属性自动同步               |
+|   `sigmoid`    | [`torch.nn.Sigmoid`](https://pytorch.org/docs/stable/generated/torch.nn.Sigmoid.html?highlight=torch+nn+sigmoid#torch.nn.Sigmoid) |                                                                           /                                                                           |                         **只读**，`Sigmoid`层模型                          |
 
 #### method \_\_init__()
 
@@ -192,15 +192,15 @@
 
 ##### 输入
 
-|      参数      |                             类型                             |        初始值         |                             描述                             |
-| :------------: | :----------------------------------------------------------: | :-------------------: | :----------------------------------------------------------: |
-|  `input_dim`   |                            `int`                             |      `Required`       |                           输入维数                           |
-|  `hidden_dim`  |                            `int`                             |      `Required`       |                          隐藏层维数                          |
-|  `output_dim`  |                            `int`                             |      `Required`       |                           输出维数                           |
-|  `num_layers`  |                            `int`                             |      `Required`       |                           LSTM层数                           |
-|      `fc`      | [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) |        `None`         |                         全连接层模型                         |
-| `dropout_rate` |                           `float`                            |          `0`          | `dropout_rate∈[0,1]`<br/>`dropout`层要丢弃的神经元的比例<br/>等于`0`时禁用`dropout`层 |
-|    `device`    | [`torch.device`](https://pytorch.org/docs/stable/tensor_attributes.html?highlight=device#torch.device) | `torch.device('cpu')` |                     训练模型时使用的设备                     |
+|       参数       |                                                              类型                                                               |          初始值          |                                  描述                                  |
+|:--------------:|:-----------------------------------------------------------------------------------------------------------------------------:|:---------------------:|:--------------------------------------------------------------------:|
+|  `input_dim`   |                                                             `int`                                                             |      `Required`       |                                 输入维数                                 |
+|  `hidden_dim`  |                                                             `int`                                                             |      `Required`       |                                隐藏层维数                                 |
+|  `output_dim`  |                                                             `int`                                                             |      `Required`       |                                 输出维数                                 |
+|  `num_layers`  |                                                             `int`                                                             |      `Required`       |                                LSTM层数                                |
+|      `fc`      | [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) |        `None`         |                                全连接层模型                                |
+| `dropout_rate` |                                                            `float`                                                            |          `0`          | `dropout_rate∈[0,1]`<br/>`dropout`层要丢弃的神经元的比例<br/>等于`0`时禁用`dropout`层 |
+|    `device`    |            [`torch.device`](https://pytorch.org/docs/stable/tensor_attributes.html?highlight=device#torch.device)             | `torch.device('cpu')` |                              训练模型时使用的设备                              |
 
 ##### 输出
 
@@ -278,10 +278,10 @@
 
 [`SVM`](#class-SVM)提供了对SVM模型的封装，可以进行训练、预测、保存和加载等操作
 
-|      属性      |                             类型                             | 初始值 |        描述        |
-| :------------: | :----------------------------------------------------------: | :----: | :----------------: |
-|    `model`     | [`libsvm.svmutil.svm_model`](https://github.com/cjlin1/libsvm/blob/aed66346593ec0e075f38eda10fef0c1fb132692/python/libsvm/svm.py#L352) | `None` |      SVM模型       |
-| `grid_results` |        [`list[models.GridResult]`](#class-GridResult)        | `None` | 网格搜索的结果列表 |
+|       属性       |                                                                   类型                                                                   |  初始值   |    描述     |
+|:--------------:|:--------------------------------------------------------------------------------------------------------------------------------------:|:------:|:---------:|
+|    `model`     | [`libsvm.svmutil.svm_model`](https://github.com/cjlin1/libsvm/blob/aed66346593ec0e075f38eda10fef0c1fb132692/python/libsvm/svm.py#L352) | `None` |   SVM模型   |
+| `grid_results` |                                             [`list[models.GridResult]`](#class-GridResult)                                             | `None` | 网格搜索的结果列表 |
 
 
 #### method \_\_init__()
@@ -302,10 +302,10 @@
 
 ##### 输入
 
-|     参数     |                             类型                             | 初始值 |   描述   |
-| :----------: | :----------------------------------------------------------: | :----: | :------: |
-|   `model`    | [`libsvm.svmutil.svm_model`](https://github.com/cjlin1/libsvm/blob/aed66346593ec0e075f38eda10fef0c1fb132692/python/libsvm/svm.py#L352) | `None` | SVM模型  |
-| `model_path` |                            `str`                             | `None` | 模型路径 |
+|      参数      |                                                                   类型                                                                   |  初始值   |  描述   |
+|:------------:|:--------------------------------------------------------------------------------------------------------------------------------------:|:------:|:-----:|
+|   `model`    | [`libsvm.svmutil.svm_model`](https://github.com/cjlin1/libsvm/blob/aed66346593ec0e075f38eda10fef0c1fb132692/python/libsvm/svm.py#L352) | `None` | SVM模型 |
+| `model_path` |                                                                 `str`                                                                  | `None` | 模型路径  |
 
 ##### 输出
 
@@ -362,12 +362,12 @@
 
 ##### 输入
 
-|          参数           |                             类型                             |   初始值   |                             描述                             |
-| :---------------------: | :----------------------------------------------------------: | :--------: | :----------------------------------------------------------: |
-|     `problem_path`      |                            `str`                             | `Required` |                   标准libsvm格式测试集路径                   |
-|         `model`         | [`libsvm.svmutil.svm_model`](https://github.com/cjlin1/libsvm/blob/aed66346593ec0e075f38eda10fef0c1fb132692/python/libsvm/svm.py#L352) |   `None`   |                         训练好的模型                         |
-|      `model_path`       |                            `str`                             |   `None`   |                      训练好的模型的路径                      |
-| `probability_estimates` |                            `int`                             |   `None`   | whether to train a SVC or SVR model for probability estimates, 0 or 1 (default 0) |
+|           参数            |                                                                   类型                                                                   |    初始值     |                                        描述                                         |
+|:-----------------------:|:--------------------------------------------------------------------------------------------------------------------------------------:|:----------:|:---------------------------------------------------------------------------------:|
+|     `problem_path`      |                                                                 `str`                                                                  | `Required` |                                  标准libsvm格式测试集路径                                  |
+|         `model`         | [`libsvm.svmutil.svm_model`](https://github.com/cjlin1/libsvm/blob/aed66346593ec0e075f38eda10fef0c1fb132692/python/libsvm/svm.py#L352) |   `None`   |                                      训练好的模型                                       |
+|      `model_path`       |                                                                 `str`                                                                  |   `None`   |                                     训练好的模型的路径                                     |
+| `probability_estimates` |                                                                 `int`                                                                  |   `None`   | whether to train a SVC or SVR model for probability estimates, 0 or 1 (default 0) |
 
 ##### 输出
 
@@ -425,19 +425,19 @@
 
 [`Trainer`](#class-Trainer)封装了一些用于训练SVM和神经网络的API。它提供了程序终止时自动保存训练结果等有用的功能。
 
-|        属性        |                             类型                             |        初始值         |                             描述                             |
-| :----------------: | :----------------------------------------------------------: | :-------------------: | :----------------------------------------------------------: |
-|     `autosave`     |                            `bool`                            |        `True`         |                     是否自动保存训练结果                     |
-|   `autosave_dir`   |                            `str`                             |   `r'..\autosave'`    |                   自动保存的**文件夹**路径                   |
-|  `tfidf_dataset`   | [`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html?highlight=dataset#torch.utils.data.Dataset) |        `None`         | 存有`tfidf`和`label`的数据集，一般使用[`Converter`](#class-Converter)的[`tfidf_dataset`](#Converter-tfidf-dataset)属性 |
-| `word2vec_dataset` | [`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html?highlight=dataset#torch.utils.data.Dataset) |        `None`         |                           **TODO**                           |
-|  `svm_train_path`  |                            `str`                             |        `None`         |              SVM的训练集文件，**必须**实际存在               |
-|  `svm_model_path`  |                            `str`                             |        `None`         |               SVM的模型文件，**必须**实际存在                |
-|       `svm`        |                   [`svm.SVM`](#class-SVM)                    | [`SVM()`](#class-SVM) |  svm实例，训练SVM时使用该属性的[`train()`](#svm-train)方法   |
-|      `model`       | [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) |        `None`         | 要训练的神经网络模型，一般使用[`lstm.LSTMModel`](#class-LSTMModel)，也可以传入其它`Module` |
-|    `optimizer`     | [`torch.optim.Optimizer`](https://pytorch.org/docs/stable/optim.html?highlight=optimizer#torch.optim.Optimizer) |        `None`         |                  训练神经网络时使用的优化器                  |
-|    `criterion`     | [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) |        `None`         |                 训练神经网络时使用的损失函数                 |
-|      `device`      | [`torch.device`](https://pytorch.org/docs/stable/tensor_attributes.html?highlight=device#torch.device) |        `None`         |                   训练神经网络时使用的设备                   |
+|         属性         |                                                              类型                                                               |          初始值          |                                                   描述                                                    |
+|:------------------:|:-----------------------------------------------------------------------------------------------------------------------------:|:---------------------:|:-------------------------------------------------------------------------------------------------------:|
+|     `autosave`     |                                                            `bool`                                                             |        `True`         |                                               是否自动保存训练结果                                                |
+|   `autosave_dir`   |                                                             `str`                                                             |   `r'..\autosave'`    |                                             自动保存的**文件夹**路径                                              |
+|  `tfidf_dataset`   |      [`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html?highlight=dataset#torch.utils.data.Dataset)       |        `None`         | 存有`tfidf`和`label`的数据集，一般使用[`Converter`](#class-Converter)的[`tfidf_dataset`](#Converter-tfidf-dataset)属性 |
+| `word2vec_dataset` |      [`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html?highlight=dataset#torch.utils.data.Dataset)       |        `None`         |                                                **TODO**                                                 |
+|  `svm_train_path`  |                                                             `str`                                                             |        `None`         |                                          SVM的训练集文件，**必须**实际存在                                           |
+|  `svm_model_path`  |                                                             `str`                                                             |        `None`         |                                           SVM的模型文件，**必须**实际存在                                           |
+|       `svm`        |                                                    [`svm.SVM`](#class-SVM)                                                    | [`SVM()`](#class-SVM) |                               svm实例，训练SVM时使用该属性的[`train()`](#svm-train)方法                               |
+|      `model`       | [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) |        `None`         |                   要训练的神经网络模型，一般使用[`lstm.LSTMModel`](#class-LSTMModel)，也可以传入其它`Module`                   |
+|    `optimizer`     |        [`torch.optim.Optimizer`](https://pytorch.org/docs/stable/optim.html?highlight=optimizer#torch.optim.Optimizer)        |        `None`         |                                              训练神经网络时使用的优化器                                              |
+|    `criterion`     | [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) |        `None`         |                                             训练神经网络时使用的损失函数                                              |
+|      `device`      |            [`torch.device`](https://pytorch.org/docs/stable/tensor_attributes.html?highlight=device#torch.device)             |        `None`         |                                              训练神经网络时使用的设备                                               |
 
 #### method \_\_init\_\_()
 
@@ -445,18 +445,18 @@
 
 ##### 输入
 
-|        参数        |                             类型                             |      初始值      |                             描述                             |
-| :----------------: | :----------------------------------------------------------: | :--------------: | :----------------------------------------------------------: |
-|     `autosave`     |                            `bool`                            |      `True`      |                     是否自动保存训练结果                     |
-|   `autosave_dir`   |                            `str`                             | `r'..\autosave'` |                   自动保存的**文件夹**路径                   |
-|  `tfidf_dataset`   | [`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html?highlight=dataset#torch.utils.data.Dataset) |      `None`      | 存有`tfidf`和`label`的数据集，一般使用[`Converter`](#class-Converter)的[`tfidf_dataset`](#Converter-tfidf-dataset)属性 |
-| `word2vec_dataset` | [`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html?highlight=dataset#torch.utils.data.Dataset) |      `None`      |                           **TODO**                           |
-|  `svm_train_path`  |                            `str`                             |      `None`      |              SVM的训练集文件，**必须**实际存在               |
-|  `svm_model_path`  |                            `str`                             |      `None`      |               SVM的模型文件，**必须**实际存在                |
-|      `model`       | [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) |      `None`      | 要训练的神经网络模型，一般使用[`lstm.LSTMModel`](#class-LSTMModel)，也可以传入其它`Module` |
-|    `optimizer`     | [`torch.optim.Optimizer`](https://pytorch.org/docs/stable/optim.html?highlight=optimizer#torch.optim.Optimizer) |      `None`      |                  训练神经网络时使用的优化器                  |
-|    `criterion`     | [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) |      `None`      |                 训练神经网络时使用的损失函数                 |
-|      `device`      | [`torch.device`](https://pytorch.org/docs/stable/tensor_attributes.html?highlight=device#torch.device) |      `None`      |                   训练神经网络时使用的设备                   |
+|         参数         |                                                              类型                                                               |       初始值        |                                                   描述                                                    |
+|:------------------:|:-----------------------------------------------------------------------------------------------------------------------------:|:----------------:|:-------------------------------------------------------------------------------------------------------:|
+|     `autosave`     |                                                            `bool`                                                             |      `True`      |                                               是否自动保存训练结果                                                |
+|   `autosave_dir`   |                                                             `str`                                                             | `r'..\autosave'` |                                             自动保存的**文件夹**路径                                              |
+|  `tfidf_dataset`   |      [`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html?highlight=dataset#torch.utils.data.Dataset)       |      `None`      | 存有`tfidf`和`label`的数据集，一般使用[`Converter`](#class-Converter)的[`tfidf_dataset`](#Converter-tfidf-dataset)属性 |
+| `word2vec_dataset` |      [`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html?highlight=dataset#torch.utils.data.Dataset)       |      `None`      |                                                **TODO**                                                 |
+|  `svm_train_path`  |                                                             `str`                                                             |      `None`      |                                          SVM的训练集文件，**必须**实际存在                                           |
+|  `svm_model_path`  |                                                             `str`                                                             |      `None`      |                                           SVM的模型文件，**必须**实际存在                                           |
+|      `model`       | [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) |      `None`      |                   要训练的神经网络模型，一般使用[`lstm.LSTMModel`](#class-LSTMModel)，也可以传入其它`Module`                   |
+|    `optimizer`     |        [`torch.optim.Optimizer`](https://pytorch.org/docs/stable/optim.html?highlight=optimizer#torch.optim.Optimizer)        |      `None`      |                                              训练神经网络时使用的优化器                                              |
+|    `criterion`     | [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) |      `None`      |                                             训练神经网络时使用的损失函数                                              |
+|      `device`      |            [`torch.device`](https://pytorch.org/docs/stable/tensor_attributes.html?highlight=device#torch.device)             |      `None`      |                                              训练神经网络时使用的设备                                               |
 
 ##### 输出
 
@@ -475,13 +475,13 @@
 
 ##### 输入
 
-|       参数       |                             类型                             |   初始值   |             描述             |
-| :--------------: | :----------------------------------------------------------: | :--------: | :--------------------------: |
-|  `train_loader`  | [`torch.utils.data.DataLoader`](https://pytorch.org/docs/stable/data.html?highlight=dataloader#torch.utils.data.DataLoader) | `Required` |   存放训练集的`DataLoader`   |
-|   `num_epochs`   |                            `int`                             | `Required` |          训练的轮数          |
-| `enable_logging` |                            `bool`                            |  `False`   |       是否打印训练进度       |
-|  `from_record`   |                            `bool`                            |  `False`   | 是否从记录文件中读取训练结果 |
-|  `record_path`   |                            `str`                             |   `None`   |         记录文件路径         |
+|        参数        |                                                             类型                                                              |    初始值     |         描述         |
+|:----------------:|:---------------------------------------------------------------------------------------------------------------------------:|:----------:|:------------------:|
+|  `train_loader`  | [`torch.utils.data.DataLoader`](https://pytorch.org/docs/stable/data.html?highlight=dataloader#torch.utils.data.DataLoader) | `Required` | 存放训练集的`DataLoader` |
+|   `num_epochs`   |                                                            `int`                                                            | `Required` |       训练的轮数        |
+| `enable_logging` |                                                           `bool`                                                            |  `False`   |      是否打印训练进度      |
+|  `from_record`   |                                                           `bool`                                                            |  `False`   |   是否从记录文件中读取训练结果   |
+|  `record_path`   |                                                            `str`                                                            |   `None`   |       记录文件路径       |
 
 ##### 输出
 
@@ -493,8 +493,8 @@
 
 ##### 输入
 
-|     参数      |                             类型                             |   初始值   |           描述           |
-| :-----------: | :----------------------------------------------------------: | :--------: | :----------------------: |
+|      参数       |                                                             类型                                                              |    初始值     |         描述         |
+|:-------------:|:---------------------------------------------------------------------------------------------------------------------------:|:----------:|:------------------:|
 | `test_loader` | [`torch.utils.data.DataLoader`](https://pytorch.org/docs/stable/data.html?highlight=dataloader#torch.utils.data.DataLoader) | `Required` | 存放测试集的`DataLoader` |
 
 ##### 输出
@@ -507,8 +507,8 @@
 
 ##### 输入
 
-|  参数   |                             类型                             |   初始值   |       描述       |
-| :-----: | :----------------------------------------------------------: | :--------: | :--------------: |
+|   参数    |                                              类型                                              |    初始值     |    描述    |
+|:-------:|:--------------------------------------------------------------------------------------------:|:----------:|:--------:|
 | `texts` | [`torch.Tensor`](https://pytorch.org/docs/stable/tensors.html?highlight=tensor#torch.Tensor) | `Required` | 要预测的文本张量 |
 
 ##### 输出
