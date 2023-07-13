@@ -196,20 +196,44 @@ class Trainer(object):
             self.__model = self.__model.to(self.__device)
 
     def train(
-            self,
-            train_loader: DataLoader, num_epochs: int, enable_logging: bool = False,
-            from_record: bool = False, record_path: str = None
+            self, epochs: int,
+            svm_mode: bool = False, word2vec_mode: bool = False,
+            enable_logging: bool = False, from_record: bool = False, record_path: str = None,
+            batch_size: int = 1, **loader_kwargs,
     ):
+        # 检查内部属性
         if self.__model is None:
             raise RuntimeError('请先设置model')
         if self.__optimizer is None:
             raise RuntimeError('请先设置optimizer')
         if self.__criterion is None:
             raise RuntimeError('请先设置criterion')
-        if not hasattr(train_loader, '__iter__'):
-            raise AttributeError('train_loader必须可迭代')
-        if not isinstance(num_epochs, int) and num_epochs < 1:
-            raise ValueError('num_epochs必须是一个正整数')
+        # 检查参数
+        if svm_mode == word2vec_mode:
+            raise ValueError('svm_mode和word2vec_mode不能同时为True或同时为False')
+        if not isinstance(epochs, int) and epochs < 1:
+            raise ValueError('epochs必须是一个正整数')
+        if not isinstance(batch_size, int) and batch_size < 1:
+            raise ValueError('batch_size必须是一个正整数')
+        if 'dataset' in loader_kwargs:
+            raise ValueError('loader_kwargs不能包含dataset参数')
+        # 选择数据集
+        if svm_mode:
+            if self.__tfidf_dataset is None:
+                raise RuntimeError('tfidf_dataset不能为None')
+            dataset = self.__tfidf_dataset
+        elif word2vec_mode:
+            if self.__word2vec_dataset is None:
+                raise RuntimeError('word2vec_dataset不能为None')
+            dataset = self.__word2vec_dataset
+        # 转化为DataLoader
+        # noinspection PyUnboundLocalVariable
+        loader = DataLoader(
+            dataset=dataset,
+            batch_size=batch_size,
+            **loader_kwargs
+        )
+
         if from_record:
             if not isinstance(record_path, str):
                 raise TypeError('record_path必须是一个文件路径')
@@ -227,13 +251,13 @@ class Trainer(object):
 
         if self.autosave and not from_record:
             self.__nn_training_state.current_epoch = 0
-            self.__nn_training_state.total_epochs = num_epochs
+            self.__nn_training_state.total_epochs = epochs
 
         try:
-            for epoch in range(num_epochs - record_epoch):
+            for epoch in range(epochs - record_epoch):
                 if enable_logging:
-                    print(f"Epoch {epoch + 1}/{num_epochs}")
-                for i, (texts, labels) in enumerate(train_loader):
+                    print(f"Epoch {epoch + 1 - record_epoch}/{epochs - record_epoch}")
+                for i, (texts, labels) in enumerate(loader):
                     texts = torch.Tensor(texts)
                     labels = torch.Tensor(labels).type(torch.LongTensor)
 
@@ -244,7 +268,7 @@ class Trainer(object):
                     loss.backward()
                     self.__optimizer.step()
                     if enable_logging and (i + 1) % 100 == 0:
-                        print(f"Step {i + 1}/{len(train_loader)}, Loss: {loss.item():.4f}")
+                        print(f"Step {i + 1}/{len(loader)}, Loss: {loss.item():.4f}")
                 if self.autosave:
                     self.__nn_training_state.current_epoch = epoch
                     self.__nn_training_state.model_state_dict = self.__model.state_dict()
