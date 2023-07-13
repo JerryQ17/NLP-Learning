@@ -47,8 +47,10 @@ class Trainer(object):
         self.__nn_training_state: NNTrainingState = NNTrainingState()
         self.__model: nn.Module | None = None
         self.model = model
-        self.__optimizer = optimizer
-        self.__criterion = criterion
+        self.__optimizer: Optimizer | None = None
+        self.optimizer = optimizer
+        self.__criterion: nn.Module | None = None
+        self.criterion = criterion
         self.__device: torch.device | None = None
         self.device = device
 
@@ -68,6 +70,8 @@ class Trainer(object):
     def autosave_dir(self, autosave_dir: str):
         if not isinstance(autosave_dir, str):
             raise TypeError('autosave_dir必须是一个字符串')
+        if not os.path.isdir(autosave_dir):
+            raise ValueError('autosave_dir必须是一个已存在的目录')
         self.__autosave_dir = autosave_dir
 
     @property
@@ -125,7 +129,7 @@ class Trainer(object):
         if not os.path.isfile(svm_model_path):
             raise FileNotFoundError(f'文件{svm_model_path}不存在')
         self.__svm_model_path = svm_model_path
-        self.__svm.load(svm_model_path)
+        self.__svm.load(model_path=svm_model_path)
 
     @property
     def svm(self):
@@ -247,11 +251,12 @@ class Trainer(object):
                     self.__nn_training_state.optimizer_state_dict = self.__optimizer.state_dict()
                 if enable_logging:
                     print('-' * 50)
+            return self
         except Exception as error:
             self._auto_save_handler()
             raise error
 
-    def evaluate(self, test_loader: DataLoader, enable_logging: bool = False) -> float:
+    def evaluate(self, test_loader: DataLoader) -> float:
         if self.__model is None:
             raise RuntimeError('请先设置model')
         if not hasattr(test_loader, '__iter__'):
@@ -271,11 +276,7 @@ class Trainer(object):
                 _, predicted = torch.max(outputs.data, 1)
                 total += labels.size(0)
                 correct += torch.sum(predicted.eq(labels)).item()
-
-            accuracy = 100 * correct / total
-            if enable_logging:
-                print(f"Accuracy: {accuracy:.4f}%")
-            return accuracy
+            return 100 * correct / total
 
     def predict(self, texts: torch.Tensor) -> torch.Tensor:
         if self.__model is None:
@@ -301,6 +302,7 @@ class Trainer(object):
         if self.__model is None:
             raise RuntimeError('请先设置model')
         self.__model.load_state_dict(torch.load(load_path))
+        return self
 
     # noinspection PyUnusedLocal
     def _auto_save_handler(self, auto_save_signal: signal.Signals | int = None, frame: FrameType = None):
@@ -308,6 +310,6 @@ class Trainer(object):
         if self.__nn_training_state != NNTrainingState():
             torch.save(self.__nn_training_state, self.autosave_dir + r'\nn.autosave.pth')
             print('nn.autosave.pth已保存')
-        if self.svm.grid_results:
+        if len(self.svm.grid_results):
             torch.save([i.dict() for i in self.svm.grid_results], self.autosave_dir + r'\svm.autosave.pth')
             print('svm.autosave.pth已保存')

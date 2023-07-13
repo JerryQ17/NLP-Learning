@@ -109,14 +109,14 @@
 
 > Tips: `IMDBDataset`是可迭代的
 
-|         属性          |            类型             |    初始值     |                                              描述                                               |
-|:-------------------:|:-------------------------:|:----------:|:---------------------------------------------------------------------------------------------:|
-|    `save_memory`    |          `bool`           |  `False`   |                                         **只读**，是否节省内存                                         |
-| `get_item_by_tuple` |          `bool`           |  `False`   | `True`时，`__getitem__()`方法返回一个元组<br/>`False`时，`__getitem__()`方法返回一个[`Review`](#class-Review)实例 |
-| `dataset_pathname`  |           `str`           | `Required` |                                      `csv`文件的路径，**必须**存在                                      |
-|   `dataset_title`   |           `str`           |     /      |                                    **只读**，`csv`文件的文件名，自动更新                                    |
-|       `item`        | [`Review`](#class-Review) |     /      |                         **只读**，数据集中的当前项<br/>`save_memory = False`时无效                          |
-|       `items`       |      `numpy.ndarray`      |     /      |                       **只读**，数据集中的所有项<br/>`save_memory = True`时为`None`                        |
+|         属性          |                类型                |    初始值     |                                              描述                                               |
+|:-------------------:|:--------------------------------:|:----------:|:---------------------------------------------------------------------------------------------:|
+|    `save_memory`    |              `bool`              |  `False`   |                                         **只读**，是否节省内存                                         |
+| `get_item_by_tuple` |              `bool`              |  `False`   | `True`时，`__getitem__()`方法返回一个元组<br/>`False`时，`__getitem__()`方法返回一个[`Review`](#class-Review)实例 |
+| `dataset_pathname`  |              `str`               | `Required` |                                      `csv`文件的路径，**必须**存在                                      |
+|   `dataset_title`   |              `str`               |     /      |                                    **只读**，`csv`文件的文件名，自动更新                                    |
+|       `item`        | [`models.Review`](#class-Review) |     /      |                         **只读**，数据集中的当前项<br/>`save_memory = False`时无效                          |
+|       `items`       |         `numpy.ndarray`          |     /      |                       **只读**，数据集中的所有项<br/>`save_memory = True`时为`None`                        |
 
 #### method \_\_init__()
 
@@ -275,10 +275,10 @@
 
 [`SVM`](#class-SVM)提供了对SVM模型的封装，可以进行训练、预测、保存和加载等操作
 
-|       属性       |                   类型                    |  初始值   |    描述     |
-|:--------------:|:---------------------------------------:|:------:|:---------:|
-|    `model`     |       `libsvm.svmutil.svm_model`        | `None` |   SVM模型   |
-| `grid_results` | [`list[GridResult]`](#class-GridResult) | `None` | 网格搜索的结果列表 |
+|       属性       |                       类型                       |  初始值   |    描述     |
+|:--------------:|:----------------------------------------------:|:------:|:---------:|
+|    `model`     |           `libsvm.svmutil.svm_model`           | `None` |   SVM模型   |
+| `grid_results` | [`list[models.GridResult]`](#class-GridResult) | `None` | 网格搜索的结果列表 |
 
 
 #### method \_\_init__()
@@ -322,7 +322,7 @@
 
 保存路径的绝对路径
 
-#### method train()
+#### <a name="svm-train">method train()</a>
 
 训练一个SVM模型
 
@@ -380,12 +380,12 @@
 
 网格搜索，寻找最优参数。
 
-因为筛选过程耗时很久，所以增加了程序终止时自动保存功能（使用`Trainer`），并且可以从中断处继续训练。
+因为筛选过程耗时很久，所以增加了程序终止时自动保存功能（使用[`Trainer`](#class-Trainer)），并且可以从中断处继续筛选。
 
-如果要从中断处恢复训练，应设置`from_record = True`，`record_path = {your_file_path}`，`your_file_path`为自动保存的训练状态文件，保持训练参数和原来的训练参数一致。（具体来说，训练参数是指`problem_path`、`c_min`、`c_max`、`c_step`、`g_min`、`g_max`、`g_step`）
+如果要从中断处恢复筛选，应设置`from_record = True`，`record_path = {your_file_path}`，`your_file_path`为自动保存的训练状态文件，保持训练参数和原来的训练参数一致。（具体来说，训练参数是指`problem_path`、`c_min`、`c_max`、`c_step`、`g_min`、`g_max`、`g_step`）
 此处的`problem_path`与原来一致是指该路径指定的训练集文件内容不变。
 
-> 后续版本将会改进自动保存机制，恢复训练将不需要输入训练参数，而是从保存文件中自动读取。
+> 后续版本将会改进自动保存机制，恢复筛选将不需要输入训练参数，而是从保存文件中自动读取。
 
 ##### 输入
 
@@ -418,5 +418,124 @@
 
 [源代码](./src/train.py)
 
----
+### class Trainer
 
+[`Trainer`](#class-Trainer)封装了一些用于训练SVM和神经网络的API。它提供了程序终止时自动保存训练结果等有用的功能。
+
+|         属性         |             类型             |          初始值          |                                                   描述                                                    |
+|:------------------:|:--------------------------:|:---------------------:|:-------------------------------------------------------------------------------------------------------:|
+|     `autosave`     |           `bool`           |        `True`         |                                               是否自动保存训练结果                                                |
+|   `autosave_dir`   |           `str`            |   `r'..\autosave'`    |                                             自动保存的**文件夹**路径                                              |
+|  `tfidf_dataset`   | `torch.utils.data.Dataset` |        `None`         | 存有`tfidf`和`label`的数据集，一般使用[`Converter`](#class-Converter)的[`tfidf_dataset`](#Converter-tfidf-dataset)属性 |
+| `word2vec_dataset` | `torch.utils.data.Dataset` |        `None`         |                                                **TODO**                                                 |
+|  `svm_train_path`  |           `str`            |        `None`         |                                          SVM的训练集文件，**必须**实际存在                                           |
+|  `svm_model_path`  |           `str`            |        `None`         |                                           SVM的模型文件，**必须**实际存在                                           |
+|       `svm`        |  [`svm.SVM`](#class-SVM)   | [`SVM()`](#class-SVM) |                               svm实例，训练SVM时使用该属性的[`train()`](#svm-train)方法                               |
+|      `model`       |     `torch.nn.Module`      |        `None`         |                   要训练的神经网络模型，一般使用[`lstm.LSTMModel`](#class-LSTMModel)，也可以传入其它`Module`                   |
+|    `optimizer`     |  `torch.optim.Optimizer`   |        `None`         |                                              训练神经网络时使用的优化器                                              |
+|    `criterion`     |     `torch.nn.Module`      |        `None`         |                                             训练神经网络时使用的损失函数                                              |
+|      `device`      |       `torch.device`       |        `None`         |                                              训练神经网络时使用的设备                                               |
+
+#### method \_\_init\_\_()
+
+初始化`Trainer`实例
+
+##### 输入
+
+|         参数         |             类型             |       初始值        |                                                   描述                                                    |
+|:------------------:|:--------------------------:|:----------------:|:-------------------------------------------------------------------------------------------------------:|
+|     `autosave`     |           `bool`           |      `True`      |                                               是否自动保存训练结果                                                |
+|   `autosave_dir`   |           `str`            | `r'..\autosave'` |                                             自动保存的**文件夹**路径                                              |
+|  `tfidf_dataset`   | `torch.utils.data.Dataset` |      `None`      | 存有`tfidf`和`label`的数据集，一般使用[`Converter`](#class-Converter)的[`tfidf_dataset`](#Converter-tfidf-dataset)属性 |
+| `word2vec_dataset` | `torch.utils.data.Dataset` |      `None`      |                                                **TODO**                                                 |
+|  `svm_train_path`  |           `str`            |      `None`      |                                          SVM的训练集文件，**必须**实际存在                                           |
+|  `svm_model_path`  |           `str`            |      `None`      |                                           SVM的模型文件，**必须**实际存在                                           |
+|      `model`       |     `torch.nn.Module`      |      `None`      |                   要训练的神经网络模型，一般使用[`lstm.LSTMModel`](#class-LSTMModel)，也可以传入其它`Module`                   |
+|    `optimizer`     |  `torch.optim.Optimizer`   |      `None`      |                                              训练神经网络时使用的优化器                                              |
+|    `criterion`     |     `torch.nn.Module`      |      `None`      |                                             训练神经网络时使用的损失函数                                              |
+|      `device`      |       `torch.device`       |      `None`      |                                              训练神经网络时使用的设备                                               |
+
+##### 输出
+
+`None`
+
+#### method train()
+
+训练神经网络
+
+因为训练过程耗时很久，所以增加了程序终止时自动保存功能，并且可以从中断处继续训练。
+
+如果要从中断处恢复训练，应设置`from_record = True`，`record_path = {your_file_path}`，`your_file_path`为自动保存的训练状态文件，保持训练参数和原来的训练参数一致。（具体来说，训练参数是指`train_loader`、`num_epochs`）
+此处的`train_loader`与原来一致是指该`DataLoader`存储的训练集内容不变。
+
+> 后续版本将会改进自动保存机制，恢复训练将不需要输入训练参数，而是从保存文件中自动读取。
+
+##### 输入
+
+|        参数        |              类型               |    初始值     |         描述         |
+|:----------------:|:-----------------------------:|:----------:|:------------------:|
+|  `train_loader`  | `torch.utils.data.DataLoader` | `Required` | 存放训练集的`DataLoader` |
+|   `num_epochs`   |             `int`             | `Required` |       训练的轮数        |
+| `enable_logging` |            `bool`             |  `False`   |      是否打印训练进度      |
+|  `from_record`   |            `bool`             |  `False`   |   是否从记录文件中读取训练结果   |
+|  `record_path`   |             `str`             |   `None`   |       记录文件路径       |
+
+##### 输出
+
+这个实例自身，即`self`
+
+#### method evaluate()
+
+评估神经网络
+
+##### 输入
+
+|      参数       |              类型               |    初始值     |         描述         |
+|:-------------:|:-----------------------------:|:----------:|:------------------:|
+| `test_loader` | `torch.utils.data.DataLoader` | `Required` | 存放测试集的`DataLoader` |
+
+##### 输出
+
+模型预测准确度
+
+#### method predict()
+
+使用神经网络预测
+
+##### 输入
+
+|   参数    |       类型       |    初始值     |    描述    |
+|:-------:|:--------------:|:----------:|:--------:|
+| `texts` | `torch.Tensor` | `Required` | 要预测的文本张量 |
+
+##### 输出
+
+预测结果，类型为`torch.Tensor`
+
+#### method save()
+
+保存训练结果
+
+##### 输入
+
+|     参数      |  类型   |             初始值             |    描述     |
+|:-----------:|:-----:|:---------------------------:|:---------:|
+| `save_path` | `str` | `r'..\lstm\model\lstm.pth'` | 神经网络的保存路径 |
+
+##### 输出
+
+保存路径的绝对路径
+
+#### method load()
+
+加载神经网络
+
+##### 输入
+
+|     参数      |  类型   |             初始值             |     描述      |
+|:-----------:|:-----:|:---------------------------:|:-----------:|
+| `load_path` | `str` | `r'..\lstm\model\lstm.pth'` | 要加载的神经网络的路径 |
+
+##### 输出
+
+这个实例自身，即`self`
