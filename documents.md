@@ -110,6 +110,10 @@
 
 [`IMDBDataset`](#class-IMDBDataset)继承了[`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html?highlight=dataset#torch.utils.data.Dataset)，它从`csv`文件中读取数据集，转化为特定的数据结构，便于开展后续的数据处理工作。
 
+`__getitem__()`方法返回的数据结构取决于`get_item_by_tuple`属性。
+
+`__len__()`方法返回数据集的长度。
+
 > Tips: `IMDBDataset`是可迭代的
 
 |         属性          |                                           类型                                           |    初始值     |                                              描述                                               |
@@ -154,10 +158,10 @@
 
 ##### 输入
 
-|    参数    |                                                       类型                                                       |    初始值     |   描述    |
-|:--------:|:--------------------------------------------------------------------------------------------------------------:|:----------:|:-------:|
-| `values` | [`scipy.sparse.csr_matrix`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html) | `Required` | TF-IDF值 |
-| `labels` |             [`numpy.ndarray`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html)             | `Required` |  情感标签   |
+|   参数   |                             类型                             |   初始值   |        描述        |
+| :------: | :----------------------------------------------------------: | :--------: | :----------------: |
+| `values` | [`scipy.sparse.csr_matrix`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html) | `Required` | **只读**，TF-IDF值 |
+| `labels` | [`numpy.ndarray`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) | `Required` | **只读**，情感标签 |
 
 ##### 输出
 
@@ -475,13 +479,15 @@
 
 ##### 输入
 
-|        参数        |                                                             类型                                                              |    初始值     |         描述         |
-|:----------------:|:---------------------------------------------------------------------------------------------------------------------------:|:----------:|:------------------:|
-|  `train_loader`  | [`torch.utils.data.DataLoader`](https://pytorch.org/docs/stable/data.html?highlight=dataloader#torch.utils.data.DataLoader) | `Required` | 存放训练集的`DataLoader` |
-|   `num_epochs`   |                                                            `int`                                                            | `Required` |       训练的轮数        |
-| `enable_logging` |                                                           `bool`                                                            |  `False`   |      是否打印训练进度      |
-|  `from_record`   |                                                           `bool`                                                            |  `False`   |   是否从记录文件中读取训练结果   |
-|  `record_path`   |                                                            `str`                                                            |   `None`   |       记录文件路径       |
+|       参数        |  类型  | 初始值  |                             描述                             |
+| :---------------: | :----: | :-----: | :----------------------------------------------------------: |
+|     `epochs`      | `int`  |   `1`   |                          训练的轮数                          |
+|    `svm_mode`     | `bool` | `False` |   **关键字参数**，以`self.tfidf_dataset`作为训练集进行训练   |
+|  `word2vec_mode`  | `bool` | `False` | **关键字参数**，以`self.word2vec_dataset`作为训练集进行训练  |
+| `enable_logging`  | `bool` | `False` |               **关键字参数**，是否打印训练进度               |
+|   `from_record`   | `bool` | `False` |         **关键字参数**，是否从记录文件中读取训练结果         |
+|   `record_path`   | `str`  | `None`  |                 **关键字参数**，记录文件路径                 |
+| `**loader_kwargs` | `dict` | `None`  | 见[`torch.utils.data.DataLoader`](https://pytorch.org/docs/stable/data.html?highlight=dataloader#torch.utils.data.DataLoader)，不能传入`dataset`参数 |
 
 ##### 输出
 

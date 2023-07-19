@@ -105,9 +105,11 @@ class Converter(object):
         """保存为svm格式"""
         if save_path is None:
             if hasattr(self.__dataset, 'dataset_title'):
-                save_path = rf'..\svm\data\{self.__dataset.dataset_title}.txt'
+                save_path = rf'.\svm\data\{self.__dataset.dataset_title}.txt'
             else:
-                save_path = rf'..\svm\data\to_svm_output({time.time()}).txt'
+                save_path = rf'.\svm\data\to_svm_output({time.time()}).txt'
+        if not os.path.exists(os.path.dirname(save_path)):
+            os.makedirs(os.path.dirname(save_path))
         if self.__processes > 1:
             args = [(item.sentiment, row) for item, row in zip(self.items_generator, self.tfidf_matrix)]
             with Pool(processes=self.__processes) as pool:

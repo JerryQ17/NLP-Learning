@@ -169,8 +169,8 @@ class TfIdfDataset(Dataset):
     def __len__(self):
         return self.__labels.shape[0]
 
-    def __getitem__(self, item) -> tuple[csr_matrix, bool]:
-        return self.__values.getrow(item), self.__labels[item]
+    def __getitem__(self, item) -> tuple[np.ndarray, bool]:
+        return self.__values.getrow(item).toarray(), self.__labels[item]
 
     @property
     def values(self):

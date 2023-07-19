@@ -3,6 +3,7 @@ import torch
 import signal
 from .svm import SVM
 from torch import nn
+from sys import stderr
 from types import FrameType
 from torch.optim import Optimizer
 from .models import NNTrainingState
@@ -14,10 +15,11 @@ class Trainer(object):
 
     def __init__(
             self,
-            autosave: bool = True, autosave_dir: str = r'..\autosave',
+            autosave: bool = True, autosave_dir: str = r'.\autosave',
             tfidf_dataset: Dataset = None, word2vec_dataset: Dataset = None,
             svm_train_path: str = None, svm_model_path: str = None,
-            model: nn.Module = None, optimizer: Optimizer = None, criterion: nn.Module = None, device: str = None
+            model: nn.Module = None, optimizer: Optimizer = None, criterion: nn.Module = None,
+            device: torch.device | str = None
     ):
         # 自动保存
         self.__autosave: bool = autosave is True
@@ -146,7 +148,9 @@ class Trainer(object):
             return
         if not isinstance(model, nn.Module):
             raise TypeError('model必须是一个torch.nn.Module对象')
-        self.__model = model.to(self.__device)
+        self.__model = model
+        if hasattr(self, f'_{self.__class__.__name__}__device') and self.__device is not None:
+            self.__model.to(self.__device)
 
     @property
     def optimizer(self):
@@ -179,27 +183,29 @@ class Trainer(object):
         return self.__device
 
     @device.setter
-    def device(self, device: list[str, int] | str | int | None):
+    def device(self, device: torch.device | list[str, int] | str | int | None):
         if device is None:
             if torch.cuda.is_available():
                 self.__device = torch.device('cuda')
             else:
                 self.__device = torch.device('cpu')
+        elif isinstance(device, torch.device):
+            self.__device = device
         elif isinstance(device, list) and len(device) == 2 \
                 and isinstance(device[0], str) and isinstance(device[1], int):
             self.__device = torch.device(*device)
         elif isinstance(device, (str, int)):
             self.__device = torch.device(device)
         else:
-            raise TypeError(f'device必须是一个长度为2的列表或者是一个字符串或者是一个整数')
+            raise TypeError(f'device必须是一个torch.device或者是一个长度为2的列表或者是一个字符串或者是一个整数')
         if self.__model is not None:
             self.__model = self.__model.to(self.__device)
 
     def train(
-            self, epochs: int,
+            self, epochs: int = 1, *,
             svm_mode: bool = False, word2vec_mode: bool = False,
             enable_logging: bool = False, from_record: bool = False, record_path: str = None,
-            batch_size: int = 1, **loader_kwargs,
+            **loader_kwargs
     ):
         # 检查内部属性
         if self.__model is None:
@@ -213,8 +219,6 @@ class Trainer(object):
             raise ValueError('svm_mode和word2vec_mode不能同时为True或同时为False')
         if not isinstance(epochs, int) and epochs < 1:
             raise ValueError('epochs必须是一个正整数')
-        if not isinstance(batch_size, int) and batch_size < 1:
-            raise ValueError('batch_size必须是一个正整数')
         if 'dataset' in loader_kwargs:
             raise ValueError('loader_kwargs不能包含dataset参数')
         # 选择数据集
@@ -228,11 +232,7 @@ class Trainer(object):
             dataset = self.__word2vec_dataset
         # 转化为DataLoader
         # noinspection PyUnboundLocalVariable
-        loader = DataLoader(
-            dataset=dataset,
-            batch_size=batch_size,
-            **loader_kwargs
-        )
+        loader = DataLoader(dataset=dataset, **loader_kwargs)
 
         if from_record:
             if not isinstance(record_path, str):
@@ -251,15 +251,15 @@ class Trainer(object):
 
         if self.autosave and not from_record:
             self.__nn_training_state.current_epoch = 0
-            self.__nn_training_state.total_epochs = epochs
+            self.__nn_training_state.total_epoch = epochs
 
         try:
             for epoch in range(epochs - record_epoch):
                 if enable_logging:
                     print(f"Epoch {epoch + 1 - record_epoch}/{epochs - record_epoch}")
                 for i, (texts, labels) in enumerate(loader):
-                    texts = torch.Tensor(texts)
-                    labels = torch.Tensor(labels).type(torch.LongTensor)
+                    texts = torch.Tensor(texts).to(self.__device).float()
+                    labels = torch.Tensor(labels).type(torch.LongTensor).to(self.__device)
 
                     outputs = self.__model(texts)
                     loss = self.__criterion(outputs, labels)
@@ -277,7 +277,7 @@ class Trainer(object):
                     print('-' * 50)
             return self
         except Exception as error:
-            self._auto_save_handler()
+            self._auto_save_handler(error)
             raise error
 
     def evaluate(self, test_loader: DataLoader) -> float:
@@ -316,7 +316,7 @@ class Trainer(object):
             _, predicted = torch.max(outputs.data, 1)
         return predicted
 
-    def save(self, save_path: str = r'..\lstm\model\lstm.pth') -> str:
+    def save(self, save_path: str = r'.\lstm\model\lstm.pth') -> str:
         if self.__model is None:
             raise RuntimeError('请先设置model')
         torch.save(self.__model.state_dict(), save_path)
@@ -329,11 +329,11 @@ class Trainer(object):
         return self
 
     # noinspection PyUnusedLocal
-    def _auto_save_handler(self, auto_save_signal: signal.Signals | int = None, frame: FrameType = None):
-        print(f'接收到退出信号{auto_save_signal}，保存中...')
+    def _auto_save_handler(self, error: signal.Signals | Exception | int = None, frame: FrameType = None):
+        print(f'发生异常：{error}\n保存中...', file=stderr)
         if self.__nn_training_state != NNTrainingState():
             torch.save(self.__nn_training_state, self.autosave_dir + r'\nn.autosave.pth')
-            print('nn.autosave.pth已保存')
+            print('nn.autosave.pth已保存', file=stderr)
         if len(self.svm.grid_results):
             torch.save([i.dict() for i in self.svm.grid_results], self.autosave_dir + r'\svm.autosave.pth')
-            print('svm.autosave.pth已保存')
+            print('svm.autosave.pth已保存', file=stderr)

@@ -181,7 +181,7 @@ class SVM(object):
             problem_path: str, n_fold: int = 5, enable_logging: bool = False,
             c_min: float = 1e-8, c_max: float = 1e8, c_step: float = 10,
             g_min: float = 1e-8, g_max: float = 1e8, g_step: float = 10,
-            detailed: bool = False, img_name: str = r'..\svm\train\grid_result.png', dpi: int = 1000,
+            detailed: bool = False, img_name: str = r'.\svm\train\grid_result.png', dpi: int = 1000,
             from_record: bool = False, record_path: str = None
     ) -> list[GridResult] | GridResult:
         """

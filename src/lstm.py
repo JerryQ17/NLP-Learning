@@ -28,20 +28,22 @@ class LSTMModel(nn.Module):
         self.__device: torch.device = device
 
         # LSTM层
-        self.__lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True).to(self.__device)
+        self.__lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True)
         # 全连接层
         if fc is None:
-            self.__fc = nn.Linear(hidden_dim, output_dim).to(self.__device)
+            self.__fc = nn.Linear(hidden_dim, output_dim)
         else:
             if not isinstance(fc, nn.Module):
                 raise TypeError(f'全连接层应为nn.Module类型，而不是{type(fc)}类型')
             self.__fc = fc
-        # droupout层
+        # dropout层
         self.__dropout_rate: float | None = None
         self.__dropout: nn.Dropout | None = None
         self.dropout_rate = dropout_rate
         # sigmoid层
-        self.__sigmoid = nn.Sigmoid().to(self.__device)
+        self.__sigmoid = nn.Sigmoid()
+        # 将模型移动到指定设备
+        self.to(self.__device)
 
     def forward(self, input_tensor: torch.Tensor):
         lstm_out, _ = self.__lstm(input_tensor.view(len(input_tensor), 1, -1))
