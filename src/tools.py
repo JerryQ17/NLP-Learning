@@ -168,37 +168,37 @@ class _BaseTypeCheck(ABC):
     def __eq__(self, other):
         if isinstance(self, _BaseTypeCheck) and isinstance(other, _BaseTypeCheck):
             return self.__key == other.__key
-        return False
+        raise NotImplemented(f'Cannot compare {type(self)} with {type(other)}')
 
     def __lt__(self, other):
         if isinstance(other, self.__class__):
             return frozenset(self.types).issubset(frozenset(other.types))
-        return False
+        raise NotImplemented(f'Cannot compare {type(self)} with {type(other)}')
 
     def __le__(self, other):
         if isinstance(other, self.__class__):
             return frozenset(self.types).issubset(frozenset(other.types)) or self.types == other.types
-        return False
+        raise NotImplemented(f'Cannot compare {type(self)} with {type(other)}')
 
     def __gt__(self, other):
         if isinstance(other, self.__class__):
             return frozenset(self.types).issuperset(frozenset(other.types))
-        return False
+        raise NotImplemented(f'Cannot compare {type(self)} with {type(other)}')
 
     def __ge__(self, other):
         if isinstance(other, self.__class__):
             return frozenset(self.types).issuperset(frozenset(other.types)) or self.types == other.types
-        return False
+        raise NotImplemented(f'Cannot compare {type(self)} with {type(other)}')
 
     def __add__(self, other):
         if isinstance(other, self.__class__):
             return self.__class__(*set(self.types + other.types))
-        raise NotImplemented
+        raise NotImplemented(f'Cannot add {type(other)} to {type(self)}')
 
     def __sub__(self, other):
         if isinstance(other, self.__class__):
             return self.__class__(*(set(self.types) - set(other.types)))
-        raise NotImplemented
+        raise NotImplemented(f'Cannot subtract {type(other)} from {type(self)}')
 
     def __hash__(self):
         return hash(self.__key)
