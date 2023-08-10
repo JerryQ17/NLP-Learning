@@ -47,17 +47,18 @@ class _BaseTypeCheck(ABC):
     类型检查基类，是一个抽象类，可被序列化
 
     Abstractmethods:
-        1. _types_to_key: 该方法将类型检查器的检查类型转换为__instances字典的键
-        2. __call__: 该方法将检查对象是否符合预期类型，如果不符合则引发TypeError
+        _types_to_key: 该方法将类型检查器的检查类型转换为__instances字典的键\n
+        __call__: 该方法将检查对象是否符合预期类型，如果不符合则引发TypeError
 
     Attributes:
+        __TC: 一个类型变量，被绑定于此类，用于表示类型检查器的类型
         __instances: 字典，键为类型检查器的检查类型，值为类型检查器的实例，用于缓存类型检查器的实例
 
     Properties:
-        1. types: 类型检查器的检查类型
+        types: 类型检查器的检查类型
 
     Notes:
-        _BaseTypeCheck类维护了一个类字典属性__instances，键为类型检查器的检查类型，值为类型检查器的实例。
+        _BaseTypeCheck类维护了类属性__instances，该字典的键为类型检查器的检查类型，值为类型检查器的实例。
         创建实例时，如果检查类型已经存在于__instances字典中，则直接返回该类型检查器的实例，否则创建一个新的类型检查器实例并返回。
 
     Notes:
@@ -75,7 +76,8 @@ class _BaseTypeCheck(ABC):
             如果自定义子类自行实现了_key_to_types方法，可以不继承Iterable类。但是需要重写(override)所有与__key相关的方法。
         """
 
-    __instances: dict[__K, '_BaseTypeCheck'] = {}
+    __TC = TypeVar('__TC', bound='_BaseTypeCheck')
+    __instances: dict[__K, __TC] = {}
 
     @classmethod
     @abstractmethod
@@ -90,10 +92,10 @@ class _BaseTypeCheck(ABC):
             一个可哈希且可迭代的对象
 
         Notes:
-            该方法的耗时应该尽可能的短，因为该方法初始化时会被调用两次。
+            该方法的耗时不应过长，因为该方法初始化时会被调用两次。
         """
 
-    def __new__(cls, *types: type):
+    def __new__(cls, *types: type) -> __TC:
         """
         创建类型检查器实例
 
@@ -165,37 +167,37 @@ class _BaseTypeCheck(ABC):
             当default不为None时，如果obj == default，不会进行类型检查和额外检查，直接返回obj
         """
 
-    def __eq__(self, other):
+    def __eq__(self: __TC, other: __TC):
         if isinstance(self, _BaseTypeCheck) and isinstance(other, _BaseTypeCheck):
             return self.__key == other.__key
         raise NotImplemented(f'Cannot compare {type(self)} with {type(other)}')
 
-    def __lt__(self, other):
+    def __lt__(self: __TC, other: __TC):
         if isinstance(other, self.__class__):
             return frozenset(self.types).issubset(frozenset(other.types))
         raise NotImplemented(f'Cannot compare {type(self)} with {type(other)}')
 
-    def __le__(self, other):
+    def __le__(self: __TC, other: __TC):
         if isinstance(other, self.__class__):
             return frozenset(self.types).issubset(frozenset(other.types)) or self.types == other.types
         raise NotImplemented(f'Cannot compare {type(self)} with {type(other)}')
 
-    def __gt__(self, other):
+    def __gt__(self: __TC, other: __TC):
         if isinstance(other, self.__class__):
             return frozenset(self.types).issuperset(frozenset(other.types))
         raise NotImplemented(f'Cannot compare {type(self)} with {type(other)}')
 
-    def __ge__(self, other):
+    def __ge__(self: __TC, other: __TC):
         if isinstance(other, self.__class__):
             return frozenset(self.types).issuperset(frozenset(other.types)) or self.types == other.types
         raise NotImplemented(f'Cannot compare {type(self)} with {type(other)}')
 
-    def __add__(self, other):
+    def __add__(self: __TC, other: __TC) -> __TC:
         if isinstance(other, self.__class__):
             return self.__class__(*set(self.types + other.types))
         raise NotImplemented(f'Cannot add {type(other)} to {type(self)}')
 
-    def __sub__(self, other):
+    def __sub__(self: __TC, other: __TC) -> __TC:
         if isinstance(other, self.__class__):
             return self.__class__(*(set(self.types) - set(other.types)))
         raise NotImplemented(f'Cannot subtract {type(other)} from {type(self)}')
