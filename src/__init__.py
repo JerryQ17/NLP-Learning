@@ -1,21 +1,22 @@
-from .dataset import IMDBDataset, TfIdfDataset
-from .svm import SVM, SymType, KernelType
-from .convert import Converter
-from .train import Trainer
-from .lstm import LSTMModel
+from src.dataset import IMDBDataset, TfIdfDataset, Word2VecDataset
+from src.convert import Converter
+from src.train import Trainer
+from src.svm import SVM, SymType, KernelType
+from src.lstm import LSTMModel
 
 __all__ = [
     # dataset.py
-    'IMDBDataset',
-    'TfIdfDataset',
+    'IMDBDataset', 'TfIdfDataset', 'Word2VecDataset',
+
     # convert.py
     'Converter',
+
     # train.py
     'Trainer',
+
     # svm.py
-    'SymType',
-    'KernelType',
-    'SVM',
+    'SymType', 'KernelType', 'SVM',
+
     # lstm.py
     'LSTMModel'
 ]
