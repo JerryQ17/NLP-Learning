@@ -1,6 +1,7 @@
 import os
 import csv
 from numpy import ndarray
+from collections.abc import Sequence
 from scipy.sparse import csr_matrix
 from torch.utils.data import Dataset
 
@@ -70,14 +71,14 @@ class TfIdfDataset(Dataset):
         :param values: TF-IDF值
         :param labels: 标签
         """
-        tools.TypeCheck(csr_matrix)(values)
-        tools.check_ndarray(labels)
-        if labels.ndim != 1:
-            raise ValueError('labels的维度必须为1')
-        if len(values.shape) != 2:
-            raise ValueError('values的维度必须为2')
-        if values.shape[0] != labels.shape[0]:
-            raise ValueError('values的列数和labels的个数必须相等')
+        tools.TypeCheck(csr_matrix)(values, extra_checks=[
+            (lambda x: len(x.shape) == 2, ValueError('values的维度必须为2'))
+        ])
+        tools.check_ndarray(labels, extra_checks=[
+            (lambda x: x.ndim == 1, ValueError('labels的维度必须为1')),
+            (lambda x: x.dtype == bool, ValueError('labels的数据类型必须为bool')),
+            (lambda x: x.shape[0] == values.shape[0], ValueError('values的列数和labels的个数必须相等'))
+        ])
         self.__values = values
         self.__labels = labels
         self.__labels.setflags(write=False)
@@ -102,22 +103,21 @@ class TfIdfDataset(Dataset):
 class Word2VecDataset(Dataset):
     """Word2Vec数据集"""
 
-    def __init__(self, values: list[ndarray], labels: ndarray):
+    def __init__(self, values: Sequence[ndarray], labels: ndarray):
         """
         :param values: 词向量
         :param labels: 标签
         """
-        tools.TypeCheck(list)(values)
-        tools.check_ndarray(labels)
-        if labels.ndim != 1:
-            raise ValueError('labels的维度必须为1')
-        if len(values) != labels.shape[0]:
-            raise ValueError('values的长度和labels的个数必须相等')
-        for value in values:
-            tools.check_ndarray(value)
-            if value.ndim != 1:
-                raise ValueError('values的元素的维度必须为1')
-            value.setflags(write=False)
+        tools.TypeCheck(Sequence)(values)
+        tools.check_ndarray(*values, extra_checks=[
+            (lambda x: x.ndim == 1, ValueError('values的元素的维度必须为1')),
+            (lambda x: not x.setflags(write=False), NotImplementedError('ndarray应该有setflags方法，请检查numpy版本'))
+        ])
+        tools.check_ndarray(labels, extra_checks=[
+            (lambda x: x.dtype == bool, ValueError('labels的数据类型必须为bool')),
+            (lambda x: x.ndim == 1, ValueError('labels的维度必须为1')),
+            (lambda x: x.shape[0] == len(values), ValueError('values的长度和labels的个数必须相等'))
+        ])
         self.__values = values
         self.__labels = labels
         self.__labels.setflags(write=False)

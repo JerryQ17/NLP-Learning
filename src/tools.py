@@ -133,14 +133,14 @@ class _BaseTypeCheck(ABC):
         return 'TypeChecker for ' + sep.join(map(lambda x: x.__name__, self.__key))
 
     @abstractmethod
-    def __call__(self, obj: _T, *,
-                 default: _T = None, include_none: bool = False,
-                 extra_checks: Iterable[tuple[Callable[[_T], bool], Exception]] = None) -> _T:
+    def __call__(self, *obj: _T,
+                 default: _T | None = None, include_none: bool = False,
+                 extra_checks: Iterable[tuple[Callable[[_T], bool], Exception]] = None) -> tuple[_T | None] | _T | None:
         """
         检查obj是否符合预期类型并能通过额外检查，返回检查后的obj
 
         Args:
-            obj: 要检查的对象
+            *obj: 要检查的对象
 
         Keyword Args:
             default: 可选，当检查失败时返回的默认值，如果不为None，不符合预期类型或额外检查时不会抛出异常，而是返回default
@@ -151,7 +151,9 @@ class _BaseTypeCheck(ABC):
                 如果调用该可调用对象的求值结果为False，则根据default的值决定抛出元组第二项对应的异常或返回default
 
         Returns:
-            检查通过的对象，返回值可能与传入的obj不同，取决于额外检查函数的实现
+            当传入的obj数量大于一时，返回检查通过的对象元组
+            当传入的obj数量等于一时，直接返回该对象
+            当传入的obj数量等于零时，返回None
 
         Raises:
             TypeError: obj不符合预期类型
@@ -165,6 +167,9 @@ class _BaseTypeCheck(ABC):
 
         Notes:
             当default不为None时，如果obj == default，不会进行类型检查和额外检查，直接返回obj
+
+        Notes:
+            返回的obj可能与传入的obj不同，取决于额外检查函数的实现
         """
 
     def __eq__(self: __TC, other: __TC):
@@ -243,19 +248,30 @@ class TypeCheck(_BaseTypeCheck):
     def _types_to_key(cls, *types: type) -> tuple:
         return tuple(sorted(set(types), key=lambda x: f'{x.__module__}.{x.__name__}'))
 
-    def __call__(self, obj: _T, *,
+    def __call__(self, *obj: _T,
                  default: _T | None = None, include_none: bool = False,
-                 extra_checks: Iterable[tuple[Callable[[_T], bool], Exception]] = None) -> _T:
-        if default is not None and obj == default:
-            return obj
-        if (include_none and obj is None) or isinstance(obj, self.types):
-            return self._extra_checks(obj, default, extra_checks)
-        if default is not None:
-            return default
-        obj_repr = repr(obj)
-        if len(obj_repr) > 25:
-            obj_repr = obj[:25] + '...'
-        raise TypeError(f'The parameter type must be {self.types}, got {obj_repr} , type {type(obj)}')
+                 extra_checks: Iterable[tuple[Callable[[_T], bool], Exception]] = None) -> tuple[_T | None] | _T | None:
+        if len(obj) == 0:
+            return None
+
+        rev = []
+
+        for o in obj:
+            if default is not None and o == default:
+                rev.append(o)
+            elif include_none and o is None:
+                rev.append(None)
+            elif isinstance(o, self.types):
+                rev.append(self._extra_checks(o, default, extra_checks))
+            elif default is not None:
+                rev.append(default)
+            else:
+                o_repr = repr(o)
+                if len(o_repr) > 25:
+                    o_repr = o[:25] + '...'
+                raise TypeError(f'The parameter type must be {self.types}, got {o_repr} , type {type(o)}')
+
+        return tuple(rev) if len(rev) > 1 else rev[0]
 
 
 @final
@@ -266,15 +282,17 @@ class StrictTypeCheck(_BaseTypeCheck):
     def _types_to_key(cls, *types: type) -> frozenset:
         return frozenset(map(cls._check_type, types))
 
-    def __call__(self, obj: _T, *,
-                 default: _T = None, include_none: bool = False,
-                 extra_checks: Iterable[tuple[Callable[[_T], bool], Exception]] = None) -> _T:
-        if default is not None and obj == default:
+    def __call__(self, *obj: _T,
+                 default: _T | None = None, include_none: bool = False,
+                 extra_checks: Iterable[tuple[Callable[[_T], bool], Exception]] = None) -> tuple[_T | None] | _T | None:
+        if len(obj) == 0:
+            return None
+        if default is not None and obj == tuple(default for _ in range(len(obj))):
             return obj
         for checker in map(TypeCheck, self.types):
-            if checker(obj, default=default, include_none=include_none) == default:
-                return default
-        return self._extra_checks(obj, default, extra_checks)
+            obj = checker(*obj, default=default, include_none=include_none)
+        rev = tuple(map(lambda x: self._extra_checks(x, default, extra_checks), obj))
+        return rev if len(rev) > 1 else rev[0]
 
 
 check_str = TypeCheck(str)
