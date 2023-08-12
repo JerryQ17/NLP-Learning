@@ -59,12 +59,13 @@ class Trainer:
     def _auto_save_handler(self, error: signal.Signals | Exception | int = None, frame: FrameType = None):
         self.__logger.error(f'发生异常：{error}\n保存中...')
         if self.__nn_training_state != NNTrainingState():
-            torch.save(self.__nn_training_state, fr'{self.autosave_dir}\nn{self.__instances.index(self)}.pth')
-            self.__logger.info('nn.pth已保存')
+            nn_savepath = fr'{self.autosave_dir}\nn{self.__instances.index(self)}.pth'
+            torch.save(self.__nn_training_state, nn_savepath)
+            self.__logger.info(f'神经网络训练状态已保存于{nn_savepath}')
         if len(self.svm.grid_results):
-            torch.save([i.dict() for i in self.svm.grid_results],
-                       fr'{self.autosave_dir}\svm{self.__instances.index(self)}.pth')
-            self.__logger.info('svm.pth已保存')
+            svm_savepath = fr'{self.autosave_dir}\svm{self.__instances.index(self)}.pth'
+            torch.save([i.dict() for i in self.svm.grid_results], svm_savepath)
+            self.__logger.info(f'支持向量机训练状态已保存于{svm_savepath}')
 
     def __init__(
             self, logger: logging.Logger = logging.getLogger(__name__),
@@ -230,19 +231,23 @@ class Trainer:
         if self.__criterion:
             self.__criterion = self.__criterion.to(self.__device)
 
-    def train(
-            self, epochs: int = 1, *,
-            tfidf_mode: bool = False, word2vec_mode: bool = False,
-            enable_logging: bool = False, from_record: bool = False, record_path: str = None,
-            **dataloader_kwargs
-    ):
-        # 检查内部属性
+    def __ready_to_train_nn(self):
         if self.__model is None:
             raise ValueError('请先设置model')
         if self.__optimizer is None:
             raise ValueError('请先设置optimizer')
         if self.__criterion is None:
             raise ValueError('请先设置criterion')
+
+    def train(
+            self,
+            epochs: int = 1, *,
+            tfidf_mode: bool = False,
+            word2vec_mode: bool = False,
+            **dataloader_kwargs
+    ) -> 'Trainer':
+        # 检查内部属性
+        self.__ready_to_train_nn()
         # 检查参数
         if bool(tfidf_mode) == bool(word2vec_mode):
             raise ValueError('svm_mode和word2vec_mode不能同时为True或同时为False')
@@ -260,26 +265,16 @@ class Trainer:
                 raise ValueError('word2vec_dataset不能为None')
             loader = DataLoader(dataset=self.__word2vec_dataset, **dataloader_kwargs)
 
-        if from_record:
-            tools.check_file(record_path)
-            self.__nn_training_state = NNTrainingState(**torch.load(record_path))
-            self.__model.load_state_dict(self.__nn_training_state.model_state_dict)
-            self.__optimizer.load_state_dict(self.__nn_training_state.optimizer_state_dict)
-            record_epoch = self.__nn_training_state.current_epoch
-        else:
-            record_epoch = 0
-
         self.__model.to(self.__device)
         self.__model.train()
 
-        if self.autosave and not from_record:
+        if self.autosave:
             self.__nn_training_state.current_epoch = 0
             self.__nn_training_state.total_epoch = epochs
 
         try:
-            for epoch in range(epochs - record_epoch):
-                if enable_logging:
-                    self.__logger.info(f"Epoch {epoch + 1 - record_epoch}/{epochs - record_epoch}")
+            for epoch in range(epochs):
+                self.__logger.info(f"Epoch {epoch + 1}/{epochs}")
                 for i, (texts, labels) in enumerate(loader):
                     texts = torch.Tensor(texts).to(self.__device).float()
                     labels = torch.Tensor(labels).type(torch.LongTensor).to(self.__device)
@@ -290,7 +285,7 @@ class Trainer:
                     self.__optimizer.zero_grad()
                     loss.backward()
                     self.__optimizer.step()
-                    if enable_logging and (i + 1) % 100 == 0:
+                    if (i + 1) % 100 == 0:
                         self.__logger.info(f"Step {i + 1}/{len(loader)}, Loss: {loss.item():.4f}")
                 if self.autosave:
                     self.__nn_training_state.current_epoch = epoch
@@ -298,8 +293,20 @@ class Trainer:
                     self.__nn_training_state.optimizer_state_dict = self.__optimizer.state_dict()
             return self
         except Exception as error:
+            self.__logger.exception('训练时遇到错误', exc_info=error)
             self._auto_save_handler(error)
             raise RuntimeError(error) from error
+
+    def train_from_state(self, path: str, *,
+                         tfidf_mode: bool = False, word2vec_mode: bool = False,
+                         **dataloader_kwargs) -> 'Trainer':
+        tools.check_file(path)
+        self.__ready_to_train_nn()
+        self.__nn_training_state = NNTrainingState(**torch.load(path))
+        self.__model.load_state_dict(self.__nn_training_state.model_state_dict)
+        self.__optimizer.load_state_dict(self.__nn_training_state.optimizer_state_dict)
+        epoch = self.__nn_training_state.total_epoch - self.__nn_training_state.current_epoch
+        return self.train(epoch, tfidf_mode=tfidf_mode, word2vec_mode=word2vec_mode, **dataloader_kwargs)
 
     def evaluate(self, test_loader: DataLoader) -> float:
         if self.__model is None:
