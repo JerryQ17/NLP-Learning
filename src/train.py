@@ -1,10 +1,9 @@
-import logging
 import os
 import torch
 import atexit
 import signal
+import logging
 from torch import nn
-from sys import stderr
 from types import FrameType
 from torch.optim import Optimizer
 from torch.utils.data import Dataset, DataLoader
@@ -58,14 +57,14 @@ class Trainer:
 
     # noinspection PyUnusedLocal
     def _auto_save_handler(self, error: signal.Signals | Exception | int = None, frame: FrameType = None):
-        print(f'发生异常：{error}\n保存中...', file=stderr)
+        self.__logger.error(f'发生异常：{error}\n保存中...')
         if self.__nn_training_state != NNTrainingState():
             torch.save(self.__nn_training_state, fr'{self.autosave_dir}\nn{self.__instances.index(self)}.pth')
-            print('nn.pth已保存', file=stderr)
+            self.__logger.info('nn.pth已保存')
         if len(self.svm.grid_results):
             torch.save([i.dict() for i in self.svm.grid_results],
                        fr'{self.autosave_dir}\svm{self.__instances.index(self)}.pth')
-            print('svm.pth已保存', file=stderr)
+            self.__logger.info('svm.pth已保存')
 
     def __init__(
             self, logger: logging.Logger = logging.getLogger(__name__),
