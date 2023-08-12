@@ -1,33 +1,91 @@
+import logging
 import os
 import torch
+import atexit
 import signal
-from .svm import SVM
 from torch import nn
 from sys import stderr
 from types import FrameType
 from torch.optim import Optimizer
-from .models import NNTrainingState
 from torch.utils.data import Dataset, DataLoader
 
+from src import tools, SVM
+from src.models import NNTrainingState
 
-class Trainer(object):
+
+class Trainer:
     """数据训练器"""
+    __instances: list['Trainer'] = []
+    __autosave_registered: bool = False
+    __autosave_signals: set[signal.Signals, ...] = {signal.SIGINT, signal.SIGTERM, signal.SIGABRT}
+
+    def __new__(cls, *args, **kwargs):
+        if not cls.__autosave_registered:
+            atexit.register(cls.__autosave_all)
+            cls.__autosave_registered = True
+        instance = super().__new__(cls)
+        cls.__instances.append(instance)
+        return instance
+
+    def __del__(self):
+        self.__class__.__instances.remove(self)
+
+    @classmethod
+    def autosave_signals(cls):
+        return frozenset(cls.__autosave_signals)
+
+    @classmethod
+    def add_autosave_signals(cls, *autosave_signals: signal.Signals):
+        autosave_signals = set(autosave_signals)
+        tools.TypeCheck(signal.Signals)(*autosave_signals)
+        for sig in autosave_signals - cls.__autosave_signals:
+            signal.signal(sig, cls._auto_save_handler)
+            cls.__autosave_signals.add(sig)
+
+    @classmethod
+    def remove_autosave_signals(cls, *autosave_signals: signal.Signals):
+        autosave_signals = set(autosave_signals)
+        tools.TypeCheck(signal.Signals)(*autosave_signals)
+        for sig in autosave_signals & cls.__autosave_signals:
+            signal.signal(sig, signal.SIG_DFL)
+            cls.__autosave_signals.remove(sig)
+
+    @classmethod
+    def __autosave_all(cls):
+        for instance in cls.__instances:
+            if instance.__autosave:
+                instance._auto_save_handler()
+
+    # noinspection PyUnusedLocal
+    def _auto_save_handler(self, error: signal.Signals | Exception | int = None, frame: FrameType = None):
+        print(f'发生异常：{error}\n保存中...', file=stderr)
+        if self.__nn_training_state != NNTrainingState():
+            torch.save(self.__nn_training_state, fr'{self.autosave_dir}\nn{self.__instances.index(self)}.pth')
+            print('nn.pth已保存', file=stderr)
+        if len(self.svm.grid_results):
+            torch.save([i.dict() for i in self.svm.grid_results],
+                       fr'{self.autosave_dir}\svm{self.__instances.index(self)}.pth')
+            print('svm.pth已保存', file=stderr)
 
     def __init__(
-            self,
+            self, logger: logging.Logger = logging.getLogger(__name__),
             autosave: bool = True, autosave_dir: str = r'.\autosave',
             tfidf_dataset: Dataset = None, word2vec_dataset: Dataset = None,
             svm_train_path: str = None, svm_model_path: str = None,
             model: nn.Module = None, optimizer: Optimizer = None, criterion: nn.Module = None,
-            device: torch.device | str = None
+            device: torch.device | list[str, int] | str | int | None = None
     ):
+        # 日志记录
+        self.__logger: logging.Logger | None = None
+        self.logger = logger
+
         # 自动保存
-        self.__autosave: bool = autosave is True
+        self.__autosave: bool = bool(autosave)
         self.__autosave_dir: str = ''
         self.autosave_dir = autosave_dir
-        self.__auto_save_signals: tuple[signal.Signals, ...] = (signal.SIGINT, signal.SIGTERM, signal.SIGABRT,)
+
         if self.__autosave:
-            for auto_save_signal in self.__auto_save_signals:
+            for auto_save_signal in self.__autosave_signals:
                 signal.signal(auto_save_signal, self._auto_save_handler)
 
         # 数据集
@@ -38,14 +96,14 @@ class Trainer(object):
         self.__word2vec_dataset: Dataset | None = None
         self.word2vec_dataset = word2vec_dataset
 
-        # svm
+        # SVM
         self.__svm_train_path: str | None = None
         self.svm_train_path = svm_train_path
         self.__svm_model_path: str | None = None
         self.svm_model_path = svm_model_path
-        self.__svm: SVM = SVM()
+        self.__svm: SVM = SVM(self.__svm_train_path, self.__svm_model_path)
 
-        # nn
+        # Neural Network
         self.__nn_training_state: NNTrainingState = NNTrainingState()
         self.__model: nn.Module | None = None
         self.model = model
@@ -57,12 +115,20 @@ class Trainer(object):
         self.device = device
 
     @property
+    def logger(self):
+        return self.__logger
+
+    @logger.setter
+    def logger(self, logger):
+        self.__logger = tools.TypeCheck(logging.Logger)(logger, default=logging.getLogger(__name__))
+
+    @property
     def autosave(self):
         return self.__autosave
 
     @autosave.setter
     def autosave(self, autosave: bool):
-        self.__autosave = autosave is True
+        self.__autosave = bool(autosave)
 
     @property
     def autosave_dir(self):
@@ -70,11 +136,7 @@ class Trainer(object):
 
     @autosave_dir.setter
     def autosave_dir(self, autosave_dir: str):
-        if not isinstance(autosave_dir, str):
-            raise TypeError('autosave_dir必须是一个字符串')
-        if not os.path.isdir(autosave_dir):
-            raise ValueError('autosave_dir必须是一个已存在的目录')
-        self.__autosave_dir = autosave_dir
+        self.__autosave_dir = tools.check_dir(autosave_dir)
 
     @property
     def tfidf_dataset(self):
@@ -82,14 +144,7 @@ class Trainer(object):
 
     @tfidf_dataset.setter
     def tfidf_dataset(self, tfidf_dataset: Dataset):
-        if tfidf_dataset is None:
-            self.__tfidf_dataset = None
-            return
-        if not isinstance(tfidf_dataset, Dataset):
-            raise TypeError('tfidf_dataset必须是一个torch.utils.data.Dataset对象')
-        if not hasattr(tfidf_dataset, '__len__'):
-            raise AttributeError('tfidf_dataset必须实现__len__方法')
-        self.__tfidf_dataset = tfidf_dataset
+        self.__tfidf_dataset = tools.check_dataset(tfidf_dataset, include_none=True)
 
     @property
     def word2vec_dataset(self):
@@ -97,14 +152,7 @@ class Trainer(object):
 
     @word2vec_dataset.setter
     def word2vec_dataset(self, word2vec_dataset: Dataset):
-        if word2vec_dataset is None:
-            self.__word2vec_dataset = None
-            return
-        if not isinstance(word2vec_dataset, Dataset):
-            raise TypeError('word2vec_dataset必须是一个torch.utils.data.Dataset对象')
-        if not hasattr(word2vec_dataset, '__len__'):
-            raise AttributeError('word2vec_dataset必须实现__len__方法')
-        self.__word2vec_dataset = word2vec_dataset
+        self.__word2vec_dataset = tools.check_dataset(word2vec_dataset, include_none=True)
 
     @property
     def svm_train_path(self):
@@ -112,12 +160,9 @@ class Trainer(object):
 
     @svm_train_path.setter
     def svm_train_path(self, svm_train_path: str):
-        if svm_train_path is None:
-            self.__svm_train_path = None
-            return
-        if not os.path.isfile(svm_train_path):
-            raise FileNotFoundError(f'文件{svm_train_path}不存在')
-        self.__svm_train_path = svm_train_path
+        self.__svm_train_path = tools.check_file(svm_train_path, include_none=True)
+        if self.__svm_train_path is not None:
+            self.__svm.problem_path = svm_train_path
 
     @property
     def svm_model_path(self):
@@ -125,13 +170,9 @@ class Trainer(object):
 
     @svm_model_path.setter
     def svm_model_path(self, svm_model_path: str):
-        if svm_model_path is None:
-            self.__svm_model_path = None
-            return
-        if not os.path.isfile(svm_model_path):
-            raise FileNotFoundError(f'文件{svm_model_path}不存在')
-        self.__svm_model_path = svm_model_path
-        self.__svm.load(model_path=svm_model_path)
+        self.__svm_model_path = tools.check_file(svm_model_path, include_none=True)
+        if self.__svm_model_path:
+            self.__svm.load(model_path=svm_model_path)
 
     @property
     def svm(self):
@@ -143,13 +184,8 @@ class Trainer(object):
 
     @model.setter
     def model(self, model: nn.Module):
-        if model is None:
-            self.__model = None
-            return
-        if not isinstance(model, nn.Module):
-            raise TypeError('model必须是一个torch.nn.Module对象')
-        self.__model = model
-        if hasattr(self, f'_{self.__class__.__name__}__device') and self.__device is not None:
+        self.__model = tools.TypeCheck(nn.Module)(model, include_none=True)
+        if hasattr(self, f'_{self.__class__.__name__}__device') and self.__model and self.__device:
             self.__model.to(self.__device)
 
     @property
@@ -158,12 +194,7 @@ class Trainer(object):
 
     @optimizer.setter
     def optimizer(self, optimizer: Optimizer):
-        if optimizer is None:
-            self.__optimizer = None
-            return
-        if not isinstance(optimizer, Optimizer):
-            raise TypeError('optimizer必须是一个torch.optim.Optimizer对象')
-        self.__optimizer = optimizer
+        self.__optimizer = tools.TypeCheck(Optimizer)(optimizer, include_none=True)
 
     @property
     def criterion(self):
@@ -171,12 +202,7 @@ class Trainer(object):
 
     @criterion.setter
     def criterion(self, criterion: nn.Module):
-        if criterion is None:
-            self.__criterion = None
-            return
-        if not isinstance(criterion, nn.Module):
-            raise TypeError('criterion必须是一个torch.nn.Module对象')
-        self.__criterion = criterion
+        self.__criterion = tools.TypeCheck(nn.Module)(criterion, include_none=True)
 
     @property
     def device(self):
@@ -187,6 +213,8 @@ class Trainer(object):
         if device is None:
             if torch.cuda.is_available():
                 self.__device = torch.device('cuda')
+            elif torch.backends.mps.is_available():
+                self.__device = torch.device('mps')
             else:
                 self.__device = torch.device('cpu')
         elif isinstance(device, torch.device):
@@ -197,48 +225,44 @@ class Trainer(object):
         elif isinstance(device, (str, int)):
             self.__device = torch.device(device)
         else:
-            raise TypeError(f'device必须是一个torch.device或者是一个长度为2的列表或者是一个字符串或者是一个整数')
-        if self.__model is not None:
+            raise TypeError(f'device的类型应为torch.device | list[str, int] | str | int | None')
+        if self.__model:
             self.__model = self.__model.to(self.__device)
+        if self.__criterion:
+            self.__criterion = self.__criterion.to(self.__device)
 
     def train(
             self, epochs: int = 1, *,
-            svm_mode: bool = False, word2vec_mode: bool = False,
+            tfidf_mode: bool = False, word2vec_mode: bool = False,
             enable_logging: bool = False, from_record: bool = False, record_path: str = None,
-            **loader_kwargs
+            **dataloader_kwargs
     ):
         # 检查内部属性
         if self.__model is None:
-            raise RuntimeError('请先设置model')
+            raise ValueError('请先设置model')
         if self.__optimizer is None:
-            raise RuntimeError('请先设置optimizer')
+            raise ValueError('请先设置optimizer')
         if self.__criterion is None:
-            raise RuntimeError('请先设置criterion')
+            raise ValueError('请先设置criterion')
         # 检查参数
-        if svm_mode == word2vec_mode:
+        if bool(tfidf_mode) == bool(word2vec_mode):
             raise ValueError('svm_mode和word2vec_mode不能同时为True或同时为False')
         if not isinstance(epochs, int) and epochs < 1:
             raise ValueError('epochs必须是一个正整数')
-        if 'dataset' in loader_kwargs:
+        if 'dataset' in dataloader_kwargs:
             raise ValueError('loader_kwargs不能包含dataset参数')
-        # 选择数据集
-        if svm_mode:
+        # 选择数据集并转化为DataLoader
+        if tfidf_mode:
             if self.__tfidf_dataset is None:
-                raise RuntimeError('tfidf_dataset不能为None')
-            dataset = self.__tfidf_dataset
-        elif word2vec_mode:
+                raise ValueError('tfidf_dataset不能为None')
+            loader = DataLoader(dataset=self.__tfidf_dataset, **dataloader_kwargs)
+        else:
             if self.__word2vec_dataset is None:
-                raise RuntimeError('word2vec_dataset不能为None')
-            dataset = self.__word2vec_dataset
-        # 转化为DataLoader
-        # noinspection PyUnboundLocalVariable
-        loader = DataLoader(dataset=dataset, **loader_kwargs)
+                raise ValueError('word2vec_dataset不能为None')
+            loader = DataLoader(dataset=self.__word2vec_dataset, **dataloader_kwargs)
 
         if from_record:
-            if not isinstance(record_path, str):
-                raise TypeError('record_path必须是一个文件路径')
-            if not os.path.isfile(record_path):
-                raise FileNotFoundError(f'文件{record_path}不存在')
+            tools.check_file(record_path)
             self.__nn_training_state = NNTrainingState(**torch.load(record_path))
             self.__model.load_state_dict(self.__nn_training_state.model_state_dict)
             self.__optimizer.load_state_dict(self.__nn_training_state.optimizer_state_dict)
@@ -256,7 +280,7 @@ class Trainer(object):
         try:
             for epoch in range(epochs - record_epoch):
                 if enable_logging:
-                    print(f"Epoch {epoch + 1 - record_epoch}/{epochs - record_epoch}")
+                    self.__logger.info(f"Epoch {epoch + 1 - record_epoch}/{epochs - record_epoch}")
                 for i, (texts, labels) in enumerate(loader):
                     texts = torch.Tensor(texts).to(self.__device).float()
                     labels = torch.Tensor(labels).type(torch.LongTensor).to(self.__device)
@@ -268,23 +292,20 @@ class Trainer(object):
                     loss.backward()
                     self.__optimizer.step()
                     if enable_logging and (i + 1) % 100 == 0:
-                        print(f"Step {i + 1}/{len(loader)}, Loss: {loss.item():.4f}")
+                        self.__logger.info(f"Step {i + 1}/{len(loader)}, Loss: {loss.item():.4f}")
                 if self.autosave:
                     self.__nn_training_state.current_epoch = epoch
                     self.__nn_training_state.model_state_dict = self.__model.state_dict()
                     self.__nn_training_state.optimizer_state_dict = self.__optimizer.state_dict()
-                if enable_logging:
-                    print('-' * 50)
             return self
         except Exception as error:
             self._auto_save_handler(error)
-            raise error
+            raise RuntimeError(error) from error
 
     def evaluate(self, test_loader: DataLoader) -> float:
         if self.__model is None:
             raise RuntimeError('请先设置model')
-        if not hasattr(test_loader, '__iter__'):
-            raise AttributeError('test_loader必须可迭代')
+        tools.TypeCheck(DataLoader)(test_loader)
 
         self.__model.to(self.__device)
         self.__model.eval()
@@ -305,8 +326,7 @@ class Trainer(object):
     def predict(self, texts: torch.Tensor) -> torch.Tensor:
         if self.__model is None:
             raise RuntimeError('请先设置model')
-        if not isinstance(texts, torch.Tensor):
-            raise TypeError('texts必须是一个torch.Tensor对象')
+        tools.TypeCheck(torch.Tensor)(texts)
 
         self.__model.to(self.__device)
         self.__model.eval()
@@ -319,21 +339,11 @@ class Trainer(object):
     def save(self, save_path: str = r'.\lstm\model\lstm.pth') -> str:
         if self.__model is None:
             raise RuntimeError('请先设置model')
-        torch.save(self.__model.state_dict(), save_path)
+        torch.save(self.__model.state_dict(), tools.check_str(save_path))
         return os.path.abspath(save_path)
 
     def load(self, load_path: str):
         if self.__model is None:
             raise RuntimeError('请先设置model')
-        self.__model.load_state_dict(torch.load(load_path))
+        self.__model.load_state_dict(torch.load(tools.check_str(load_path)))
         return self
-
-    # noinspection PyUnusedLocal
-    def _auto_save_handler(self, error: signal.Signals | Exception | int = None, frame: FrameType = None):
-        print(f'发生异常：{error}\n保存中...', file=stderr)
-        if self.__nn_training_state != NNTrainingState():
-            torch.save(self.__nn_training_state, self.autosave_dir + r'\nn.autosave.pth')
-            print('nn.autosave.pth已保存', file=stderr)
-        if len(self.svm.grid_results):
-            torch.save([i.dict() for i in self.svm.grid_results], self.autosave_dir + r'\svm.autosave.pth')
-            print('svm.autosave.pth已保存', file=stderr)
