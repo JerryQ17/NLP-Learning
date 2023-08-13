@@ -65,9 +65,13 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-这样就安装了项目的依赖包，除了`pytorch`。
+安装了项目的依赖包，除了`pytorch`。
 
 ### 安装PyTorch
+
+> Notes: `Pytorch`的版本因人而异，我使用的版本不一定适合你，你应该前往[`Pytorch官网`](https://pytorch.org/)获取对应版本的`Pytorch`的安装链接。
+
+> Notes: `Package`选项要选`Pip`，安装命令要在`venv`环境中安装。
 
 接着在刚刚的`powershell`中输入以下代码：
 
@@ -75,10 +79,7 @@ pip install -r requirements.txt
 pip3 install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu121
 ```
 
-这样就安装了`pytorch preview for cuda 12.1`。
-
-显然我不知道你需要哪个版本的`pytorch`，所以你应该前往[Pytorch官网](https://pytorch.org/)自行安装对应版本的`pytorch`。
-记得`Package`选项要选`Pip`，安装命令要在`venv`环境中安装。
+安装了`pytorch preview for cuda 12.1`。
 
 ### 退出虚拟环境
 
