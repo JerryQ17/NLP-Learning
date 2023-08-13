@@ -1,14 +1,17 @@
-import time
+import logging
+from sys import stdout
+
 from src import *
 
 if __name__ == "__main__":
-    start = time.time()
-    dataset = IMDBDataset(r'.\dataset\IMDB Dataset.csv')
-    print(f'加载数据集耗时{time.time() - start}秒')
-    converter = DataConverter(dataset, processes=10)
-    converter.tfidf()
-    print(f'计算TF-IDF耗时{time.time() - start}秒')
-    path = converter.to_svm(save_path=r'.\svm\train\tfidf.txt')
-    print(f'转换为libsvm格式耗时{time.time() - start}秒')
-    results = SVM.grid(path, enable_logging=True, detailed=True, img_name=r'.\svm\train\tfidf_svm.png')
-    print(f'筛选参数耗时{time.time() - start}秒')
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    root_stream_handler = logging.StreamHandler(stdout)
+    root_file_handler = logging.FileHandler(r'.\log\log.txt', mode='w')
+    root_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    root_stream_handler.setFormatter(root_formatter)
+    root_file_handler.setFormatter(root_formatter)
+    root_logger.addHandler(root_stream_handler)
+    root_logger.addHandler(root_file_handler)
+
+    tfidf_svm()
