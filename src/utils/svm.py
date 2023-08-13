@@ -1,5 +1,4 @@
 import os
-import sys
 import time
 import logging
 from math import log
@@ -198,7 +197,7 @@ class SVM:
                 model = svm_load_model(tools.check_file(model_path))
             else:
                 if model_path is not None and os.path.isfile(model_path):
-                    print('Warning: 因为model和model_path同时存在，model_path参数已被忽略', file=sys.stderr)
+                    self.__logger.warning('因为model和model_path同时存在，model_path参数已被忽略')
         else:
             model = self.__model
             if model is not None:

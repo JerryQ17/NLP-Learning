@@ -331,7 +331,7 @@ class Trainer:
             _, predicted = torch.max(outputs.data, 1)
         return predicted
 
-    def save(self, save_path: str = r'.\lstm\model\lstm.pth') -> str:
+    def save(self, save_path: str = r'..\..\lstm\model\lstm.pth') -> str:
         if self.__model is None:
             raise RuntimeError('请先设置model')
         torch.save(self.__model.state_dict(), tools.check_str(save_path))

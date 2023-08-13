@@ -1,7 +1,7 @@
 import os
 import time
+import logging
 import numpy as np
-from sys import stderr
 from typing import Callable
 from scipy.sparse import csr_matrix
 from torch.utils.data import Dataset
@@ -16,7 +16,10 @@ from src.utils.dataset import TfIdfDataset, Word2VecDataset
 class Converter:
     """数据转换器"""
 
-    def __init__(self, dataset: Dataset, processes: int = 1):
+    def __init__(self, dataset: Dataset, processes: int = 1, logger: logging.Logger = logging.getLogger(__name__)):
+        # 日志
+        self.__logger: logging.Logger | None = None
+        self.logger = logger
         # 数据集
         self.__dataset: Dataset | None = None
         self.dataset = dataset
@@ -32,6 +35,14 @@ class Converter:
         # 词向量转换
         self.__word2vec_model: Word2Vec | None = None
         self.__word2vec_dataset: Word2VecDataset | None = None
+
+    @property
+    def logger(self):
+        return self.__logger
+
+    @logger.setter
+    def logger(self, logger):
+        self.__logger = tools.TypeCheck(logging.Logger)(logger, default=logging.getLogger(__name__))
 
     @property
     def dataset(self):
@@ -63,7 +74,7 @@ class Converter:
             if self.__processes <= 0 or self.__processes > os.cpu_count():
                 raise ValueError
         except ValueError:
-            print(f'Warning:进程数必须是一个正整数，得到了{processes}，将使用默认值1', file=stderr)
+            self.__logger.warning(f'进程数不合法，得到了{processes}，将使用默认值1')
             self.__processes = 1
 
     @property
