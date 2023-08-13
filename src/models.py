@@ -17,7 +17,3 @@ class NNTrainingState(BaseModel):
     total_epoch: int = Field(0, title='总训练轮次')
     model_state_dict: dict = Field({}, title='模型参数')
     optimizer_state_dict: dict = Field({}, title='优化器参数')
-
-
-a = SVMTrainingState(**{'current_range': ((1, 2,), (2, 3,)),
-                        'results': [GridResult(**{'c_min': 1, 'c_max': 2, 'g_min': 3, 'g_max': 4, 'rate': 5})]})
