@@ -210,23 +210,16 @@ class Trainer:
         return self.__device
 
     @device.setter
-    def device(self, device: torch.device | list[str, int] | str | int | None):
-        if device is None:
-            if torch.cuda.is_available():
-                self.__device = torch.device('cuda')
-            elif torch.backends.mps.is_available():
-                self.__device = torch.device('mps')
-            else:
-                self.__device = torch.device('cpu')
-        elif isinstance(device, torch.device):
-            self.__device = device
-        elif isinstance(device, list) and len(device) == 2 \
-                and isinstance(device[0], str) and isinstance(device[1], int):
+    def device(self, device: torch.device | list[str, int] | str | int):
+        if isinstance(device, list) and len(device) == 2 and isinstance(device[0], str) and isinstance(device[1], int):
             self.__device = torch.device(*device)
-        elif isinstance(device, (str, int)):
-            self.__device = torch.device(device)
         else:
-            raise TypeError(f'device的类型应为torch.device | list[str, int] | str | int | None')
+            self.__device = torch.device(tools.TypeCheck(torch.device, str, int)(
+                device,
+                default=torch.device('cuda') if torch.cuda.is_available() else
+                torch.device('mps') if torch.backends.mps.is_available() else
+                torch.device('cpu')
+            ))
         if self.__model:
             self.__model = self.__model.to(self.__device)
         if self.__criterion:
@@ -240,13 +233,8 @@ class Trainer:
         if self.__criterion is None:
             raise ValueError('请先设置criterion')
 
-    def train(
-            self,
-            epochs: int = 1, *,
-            tfidf_mode: bool = False,
-            word2vec_mode: bool = False,
-            **dataloader_kwargs
-    ) -> 'Trainer':
+    def train(self, epochs: int = 1, *,
+              tfidf_mode: bool = False, word2vec_mode: bool = False, **dataloader_kwargs) -> 'Trainer':
         # 检查内部属性
         self.__ready_to_train_nn()
         # 检查参数
@@ -352,5 +340,5 @@ class Trainer:
     def load(self, load_path: str):
         if self.__model is None:
             raise RuntimeError('请先设置model')
-        self.__model.load_state_dict(torch.load(tools.check_str(load_path)))
+        self.__model.load_state_dict(torch.load(tools.check_file(load_path)))
         return self
