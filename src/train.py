@@ -8,7 +8,8 @@ from types import FrameType
 from torch.optim import Optimizer
 from torch.utils.data import Dataset, DataLoader
 
-from src import tools, SVM
+from src import tools
+from src.svm import SVM
 from src.models import NNTrainingState
 
 
@@ -62,9 +63,9 @@ class Trainer:
             nn_savepath = fr'{self.autosave_dir}\nn{self.__instances.index(self)}.pth'
             torch.save(self.__nn_training_state, nn_savepath)
             self.__logger.info(f'神经网络训练状态已保存于{nn_savepath}')
-        if len(self.svm.grid_results):
+        if len(self.svm.state.results):
             svm_savepath = fr'{self.autosave_dir}\svm{self.__instances.index(self)}.pth'
-            torch.save([i.dict() for i in self.svm.grid_results], svm_savepath)
+            torch.save(self.svm.state.dict(), svm_savepath)
             self.__logger.info(f'支持向量机训练状态已保存于{svm_savepath}')
 
     def __init__(
