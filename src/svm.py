@@ -1,10 +1,10 @@
 import os
 import sys
 import time
+import logging
 from math import log
 from torch import load
 from enum import IntEnum
-from .models import GridResult
 import matplotlib.pyplot as plt
 from libsvm.svmutil import (
     svm_model,
@@ -12,6 +12,9 @@ from libsvm.svmutil import (
     svm_save_model, svm_load_model,
     svm_read_problem
 )
+
+from src import tools
+from src.models import GridResult, SVMTrainingState
 
 
 class SymType(IntEnum):
@@ -30,7 +33,7 @@ class KernelType(IntEnum):
     PRECOMPUTED_KERNEL = 4
 
 
-class SVM(object):
+class SVM:
     """SVM模型"""
     __svm_train_options = {
         'sym_type': '-s',
@@ -49,41 +52,76 @@ class SVM(object):
         'n_fold': '-v'
     }
 
-    def __init__(self):
+    def __init__(self, problem_path: str = None, model_savepath: str = None,
+                 logger: logging.Logger = logging.getLogger(__name__)):
+        self.__logger: logging.Logger | None = None
+        self.logger = logger
+
         self.__model: svm_model | None = None
-        self.__grid_results: list[GridResult] = []
+
+        self.__problem_path: str | None = None
+        self.problem_path = problem_path
+
+        self.__model_savepath: str | None = None
+        self.model_savepath = model_savepath
+
+        self.__state: SVMTrainingState = SVMTrainingState()
+
+    @property
+    def logger(self):
+        return self.__logger
+
+    @logger.setter
+    def logger(self, logger):
+        self.__logger = tools.TypeCheck(logging.Logger)(logger, default=logging.getLogger(__name__))
 
     @property
     def model(self):
         return self.__model
 
     @property
-    def grid_results(self) -> list[GridResult]:
-        return self.__grid_results
+    def problem_path(self) -> str:
+        return self.__problem_path
+
+    @problem_path.setter
+    def problem_path(self, path: str):
+        self.__problem_path = tools.check_file(path)
+
+    @property
+    def model_savepath(self) -> str:
+        return self.__model_savepath
+
+    @model_savepath.setter
+    def model_savepath(self, path: str):
+        self.__model_savepath = tools.check_str(path)
+
+    @property
+    def state(self):
+        return self.__state
 
     def load(self, model: svm_model = None, model_path: str = None) -> 'SVM':
         """加载模型，model和model_path必须至少指定一个"""
         if model is not None:
-            if not isinstance(model, svm_model):
-                raise TypeError('model必须是svm_model类型')
-            self.__model = model
+            self.__model = tools.TypeCheck(svm_model)(model)
         elif model_path is not None:
-            if not isinstance(model_path, str):
-                raise TypeError('model_path必须是str类型')
-            if not os.path.isfile(model_path):
-                raise FileNotFoundError(f'模型文件{model_path}不存在')
-            self.__model = svm_load_model(model_path)
+            self.__model = svm_load_model(tools.check_file(model_path))
         else:
             raise ValueError('model和model_path必须至少指定一个')
         return self
 
-    def save(self, path: str) -> str:
+    def save(self, path: str = None) -> str:
         """保存模型"""
+        if path is None:
+            if self.__model_savepath is None:
+                raise ValueError('未指定模型保存路径')
+            path = self.__model_savepath
+        else:
+            path = tools.check_str(path)
         svm_save_model(path, self.__model)
         return os.path.abspath(path)
 
     def train(
-            self, problem_path: str,
+            self, problem_path: str = None,
             sym_type: SymType = None, kernel_type: KernelType = None,
             degree: int = None, gamma: float = None, coef0: float = None, cost: float = None,
             nu: float = None, epsilon: float = None, cache_size: float = None, tolerance: float = None,
@@ -108,12 +146,9 @@ class SVM(object):
         :param n_fold: n-fold cross validation mode
         :return: 训练好的模型
         """
-        if not os.path.isfile(problem_path):
-            raise FileNotFoundError(f'数据文件{problem_path}不存在')
-        if shrinking is not None and shrinking not in (0, 1):
-            raise ValueError('shrinking必须是0或1')
-        if probability_estimates is not None and probability_estimates not in (0, 1):
-            raise ValueError('probability_estimates必须是0或1')
+        tools.check_file(problem_path)
+        tools.TypeCheck(int)(shrinking, probability_estimates, include_none=True,
+                             extra_checks=[(lambda x: x in (0, 1), ValueError('shrinking必须是0或1'))])
         # 生成参数字符串
         kwargs = locals()
         kwargs.pop('self')
@@ -122,13 +157,22 @@ class SVM(object):
         for key, value in kwargs.items():
             if value is not None:
                 param_str += f'{self.__svm_train_options[key]} {value} '
-
-        # 读取数据，训练模型
-        prob = svm_read_problem(problem_path)
-        if param_str == '':
-            result = svm_train(*prob)
+        # 读取数据
+        if problem_path is None:
+            if self.__problem_path is None:
+                raise ValueError('未指定训练集路径')
+            problem_path = self.__problem_path
         else:
-            result = svm_train(*prob, param_str)
+            if not isinstance(problem_path, str):
+                raise TypeError('problem_path必须是str类型')
+            if not os.path.isfile(problem_path):
+                raise FileNotFoundError(f'文件{problem_path}不存在')
+        problem = svm_read_problem(problem_path)
+        # 训练模型
+        if param_str == '':
+            result = svm_train(*problem)
+        else:
+            result = svm_train(*problem, param_str)
         if n_fold is None:
             self.__model = result
         return result
@@ -151,22 +195,18 @@ class SVM(object):
         # 检查参数
         if self.__model is None:
             if model is None:
-                if model_path is None:
-                    raise ValueError('模型未加载')
-                if not os.path.exists(model_path):
-                    raise FileNotFoundError('模型文件不存在')
-                model = svm_load_model(model_path)
+                model = svm_load_model(tools.check_file(model_path))
             else:
-                if model_path is not None and os.path.exists(model_path):
+                if model_path is not None and os.path.isfile(model_path):
                     print('Warning: 因为model和model_path同时存在，model_path参数已被忽略', file=sys.stderr)
         else:
             model = self.__model
             if model is not None:
-                print('Warning: 因为已加载模型，model参数已被忽略', file=sys.stderr)
+                self.__logger.warning('因为已加载模型，model参数已被忽略')
             if model_path is not None:
-                print('Warning: 因为已加载模型，model_path参数已被忽略', file=sys.stderr)
-        if probability_estimates is not None and probability_estimates not in (0, 1):
-            raise ValueError('probability_estimates必须是0或1')
+                self.__logger.warning('因为已加载模型，model_path参数已被忽略')
+        tools.TypeCheck(int)(probability_estimates, include_none=True,
+                             extra_checks=[(lambda i: i in (0, 1), ValueError('probability_estimates必须是0或1'))])
 
         # 生成参数字符串
         param_str = ''
@@ -176,19 +216,51 @@ class SVM(object):
         y, x = svm_read_problem(problem_path)
         return svm_predict(y, x, model, param_str)
 
+    @staticmethod
+    def __mul_range(start: float, end: float, step: float) -> tuple[float]:
+        return tuple(start * step ** i for i in range(int(log(end / start, step)) + 1))
+
+    def __draw_result(self, img_name: str = None, dpi: int = None):
+        tools.check_str(img_name, default=r'.\svm\data\grid_result.png')
+        tools.TypeCheck(int)(dpi, default=1000)
+        self.__logger.info('drawing result...')
+        # 数据处理
+        c_values = [log(result.c, 10) for result in self.__state.results]
+        g_values = [log(result.g, 10) for result in self.__state.results]
+        accuracy_values = [result.accuracy for result in self.__state.results]
+        # 绘图
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.scatter(c_values, g_values, accuracy_values, c=accuracy_values, cmap='viridis')
+        ax.set_xlabel('lg(Cost)')
+        ax.set_ylabel('lg(Gamma)')
+        ax.set_zlabel('Accuracy')
+        # 保存图片
+        plt.savefig(img_name, dpi=dpi)
+        plt.close()
+        self.__logger.info('drawing finished, saved to %s', img_name)
+
+    def __single_grid(self, c: float, g: float, problem_path: str, n_fold: int):
+        start_time = time.time()
+        self.__logger.info(f'epoch {len(self.__state.results) + 1}\ncurrent c: {c}, current g: {g}')
+        accuracy = self.train(problem_path, n_fold=n_fold, gamma=g, cost=c)
+        self.__state.results = tuple([_ for _ in self.__state.results] + [GridResult(c=c, g=g, accuracy=accuracy)])
+
+        cost = time.time() - start_time
+        self.__logger.info(
+            f'epoch {len(self.__state.results)} finished, time cost: {cost} seconds'
+        )
+
     def grid(
-            self,
-            problem_path: str, n_fold: int = 5, enable_logging: bool = False,
+            self, problem_path: str = None, n_fold: int = 5,
             c_min: float = 1e-8, c_max: float = 1e8, c_step: float = 10,
             g_min: float = 1e-8, g_max: float = 1e8, g_step: float = 10,
-            detailed: bool = False, img_name: str = r'.\svm\data\grid_result.png', dpi: int = 1000,
-            from_record: bool = False, record_path: str = None
-    ) -> list[GridResult] | GridResult:
+            detailed: bool = False, img_name: str = r'.\svm\data\grid_result.png', dpi: int = 1000
+    ) -> tuple[GridResult] | GridResult:
         """
         网格搜索
         :param problem_path: 训练集文件路径
         :param n_fold: n折交叉验证
-        :param enable_logging: 是否打印搜索进度
         :param c_min: C的最小值
         :param c_max: C的最大值
         :param c_step: C的步长
@@ -198,96 +270,59 @@ class SVM(object):
         :param detailed: 是否返回详细信息
         :param img_name: 图片名称
         :param dpi: 图片dpi
-        :param from_record: 是否从记录中读取结果继续训练
-        :param record_path: 记录文件路径
         """
 
-        def _mul_range(start: float, end: float, step: float) -> list[float]:
-            return [start * step ** i for i in range(int(log(end / start, step)) + 1)]
-
-        def _draw_result():
-            # 数据处理
-            c_values = [log(result.c_min, 10) for result in self.__grid_results]
-            g_values = [log(result.g_min, 10) for result in self.__grid_results]
-            accuracy_values = [result.rate for result in self.__grid_results]
-            # 绘图
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-            ax.scatter(c_values, g_values, accuracy_values, c=accuracy_values, cmap='viridis')
-            ax.set_xlabel('lg(Cost)')
-            ax.set_ylabel('lg(Gamma)')
-            ax.set_zlabel('Accuracy')
-            # 保存图片
-            plt.savefig(img_name, dpi=dpi)
-            plt.close()
-
         # 检查参数
-        if not os.path.isfile(problem_path):
-            raise FileNotFoundError('训练集文件不存在')
-        if from_record:
-            if record_path is None:
-                raise ValueError('record_path参数不能为None')
-            if not os.path.isfile(record_path):
-                raise FileNotFoundError('记录文件不存在')
-            try:
-                self.__grid_results = [GridResult(**result) for result in load(record_path)]
-            except Exception as error:
-                raise ValueError('记录文件格式错误') from error
-            if len(self.__grid_results) == 0:
-                raise ValueError('记录文件为空')
-            last_max_c_min = self.__grid_results[0].c_min
-            last_max_g_min = self.__grid_results[0].g_min
-            for r in self.__grid_results:
-                if r.c_min > last_max_c_min:
-                    last_max_c_min = r.c_min
-                if r.g_min > last_max_g_min:
-                    last_max_g_min = r.g_min
-            c_range = _mul_range(last_max_c_min, c_max, c_step)
-            g_range = _mul_range(g_min, g_max, g_step)
+        if problem_path is None:
+            if self.__problem_path is None:
+                raise ValueError('problem_path参数不能为None')
+            problem_path = self.__problem_path
         else:
-            self.__grid_results = []
-            last_max_c_min = c_min
-            last_max_g_min = g_min - 1
-            c_range = _mul_range(c_min, c_max, c_step)
-            g_range = _mul_range(g_min, g_max, g_step)
+            tools.check_file(problem_path)
+
+        self.__state = SVMTrainingState()
+        c_range = self.__mul_range(c_min, c_max, c_step)
+        g_range = self.__mul_range(g_min, g_max, g_step)
+
         # 计算总epoch数
         total_epochs = len(c_range) * len(g_range)
         hour_per_epoch = 0.25
-        if enable_logging:
-            print('total epochs:', total_epochs, 'epochs')
-            print('expected time:', total_epochs * hour_per_epoch, 'hours')
+        self.__logger.info(f'total epochs: {total_epochs} epochs\n'
+                           f'expected time: {total_epochs * hour_per_epoch} hours')
         # 开始搜索
         start_time = time.time()
         for c in c_range:
             for g in g_range:
-                if from_record and c == last_max_c_min and g <= last_max_g_min:
-                    continue
-                if enable_logging:
-                    print('-' * 50)
-                    print(f'epoch {len(self.__grid_results) + 1} / {total_epochs}\ncurrent c: {c}, current g: {g}\n'
-                          f'current time: {time.time() - start_time} seconds\n'
-                          f'current hour per epoch: {hour_per_epoch} hours\n'
-                          f'remaining time: {(total_epochs - len(self.__grid_results) - 1) * hour_per_epoch} hours')
-                accuracy = self.train(problem_path, n_fold=n_fold, gamma=g, cost=c)
-                self.__grid_results.append(
-                    GridResult(c_min=c, c_max=c * c_step, g_min=g, g_max=g * g_step, rate=accuracy)
-                )
-                if enable_logging:
-                    current = time.time()
-                    print(f'epoch {len(self.__grid_results)} finished, time elapsed: {current - start_time} seconds')
-                    hour_per_epoch = (current - start_time) / len(self.__grid_results) / 3600
+                self.__single_grid(c, g, problem_path, n_fold)
+
         # 结束搜索
-        if enable_logging:
-            print('-' * 50)
-            print('grid search finished')
-            print('total time elapsed:', time.time() - start_time, 'seconds')
-            print('total hour per epoch:', (time.time() - start_time) / len(self.__grid_results) / 3600, 'hours')
+        self.__logger.info(
+            'grid search finished'
+            f'total time elapsed: {time.time() - start_time} seconds'
+            f'total hour per epoch: {(time.time() - start_time) / len(self.__state.results) / 3600} hours'
+        )
         if detailed:
-            if enable_logging:
-                print('drawing result...')
-            _draw_result()
-            if enable_logging:
-                print('drawing finished')
-            return self.__grid_results
+            self.__draw_result(img_name, dpi)
+            return self.__state.results
         else:
-            return max(self.__grid_results, key=lambda x: x.rate)
+            return max(self.__state.results, key=lambda x: x.accuracy)
+
+    def grid_from_state(
+            self, state_path: str, problem_path: str = None, n_fold: int = 5,
+            detailed: bool = False, img_name: str = r'.\svm\data\grid_result.png', dpi: int = 1000
+    ) -> tuple[GridResult] | GridResult:
+        tools.check_file(state_path)
+        try:
+            self.__state = SVMTrainingState(**load(state_path))
+        except Exception as error:
+            raise RuntimeError('读取文件时发生错误') from error
+        if len(self.__state.results) == 0:
+            raise ValueError('记录文件为空')
+        for c, g in self.__state.current_range:
+            self.__single_grid(c, g, problem_path, n_fold)
+
+        if detailed:
+            self.__draw_result(img_name, dpi)
+            return self.__state.results
+        else:
+            return max(self.__state.results, key=lambda x: x.accuracy)
