@@ -8,9 +8,9 @@ from types import FrameType
 from torch.optim import Optimizer
 from torch.utils.data import Dataset, DataLoader
 
-from src import tools
-from src.svm import SVM
-from src.models import NNTrainingState
+from src.utils import tools
+from src.utils.svm import SVM
+from src.utils.models import NNTrainingState
 
 
 class Trainer:

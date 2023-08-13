@@ -13,8 +13,8 @@ from libsvm.svmutil import (
     svm_read_problem
 )
 
-from src import tools
-from src.models import GridResult, SVMTrainingState
+from src.utils import tools
+from src.utils.models import GridResult, SVMTrainingState
 
 
 class SymType(IntEnum):

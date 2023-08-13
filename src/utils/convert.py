@@ -9,8 +9,8 @@ from multiprocessing.pool import Pool
 from gensim.models.word2vec import Word2Vec
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from src import tools
-from src.dataset import TfIdfDataset, Word2VecDataset
+from src.utils import tools
+from src.utils.dataset import TfIdfDataset, Word2VecDataset
 
 
 class Converter:

@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from scipy.sparse import csr_matrix
 from torch.utils.data import Dataset
 
-from src import tools
+from src.utils import tools
 
 
 class IMDBDataset(Dataset):
