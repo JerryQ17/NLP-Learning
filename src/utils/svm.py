@@ -84,7 +84,7 @@ class SVM:
 
     @problem_path.setter
     def problem_path(self, path: str):
-        self.__problem_path = tools.check_file(path)
+        self.__problem_path = tools.check_file(path, include_none=True)
 
     @property
     def model_savepath(self) -> str:
@@ -92,7 +92,7 @@ class SVM:
 
     @model_savepath.setter
     def model_savepath(self, path: str):
-        self.__model_savepath = tools.check_str(path)
+        self.__model_savepath = tools.check_str(path, include_none=True)
 
     @property
     def state(self):
