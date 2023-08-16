@@ -269,7 +269,7 @@ class TypeCheck(_BaseTypeCheck):
                 o_repr = repr(o)
                 if len(o_repr) > 25:
                     o_repr = o_repr[:25] + '...'
-                raise TypeError(f'The parameter type must be {self.types}, got {o_repr} , type {type(o)}')
+                raise TypeError(f'The parameter type must be {self.types}, got {o_repr}, type {type(o)}')
 
         return tuple(rev) if len(rev) > 1 else rev[0]
 
@@ -317,10 +317,11 @@ def check_file(file_path: str, include_none: bool = False, default: str = None) 
     Returns:
         file_path的绝对路径
     """
-    return os.path.abspath(check_str(
+    checked = check_str(
         file_path, include_none=include_none, default=default,
         extra_checks=[(os.path.isfile, FileNotFoundError(f'file {file_path} not found'))]
-    ))
+    )
+    return checked if checked is None else os.path.abspath(checked)
 
 
 def check_dir(dir_path: str, include_none: bool = False, default: str = None) -> str:
@@ -335,7 +336,8 @@ def check_dir(dir_path: str, include_none: bool = False, default: str = None) ->
     Returns:
         dir_path的绝对路径
     """
-    return os.path.abspath(check_str(
+    checked = check_str(
         dir_path, include_none=include_none, default=default,
         extra_checks=[(os.path.isdir, FileNotFoundError(f'directory {dir_path} not found'))]
-    ))
+    )
+    return checked if checked is None else os.path.abspath(checked)
