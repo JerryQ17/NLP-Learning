@@ -285,14 +285,17 @@ class StrictTypeCheck(_BaseTypeCheck):
     def __call__(self, *obj: _T,
                  default: _T | None = None, include_none: bool = False,
                  extra_checks: Iterable[tuple[Callable[[_T], bool], Exception]] = None) -> tuple[_T | None] | _T | None:
-        if len(obj) == 0:
+        objlen = len(obj)
+        if objlen == 0:
             return None
         if default is not None and obj == tuple(default for _ in range(len(obj))):
             return obj
         for checker in map(TypeCheck, self.types):
-            checker(*obj, default=default, include_none=include_none)
+            obj = checker(*obj, default=default, include_none=include_none)
+            if objlen == 1:
+                obj = (obj,)
         rev = tuple(map(lambda x: self._extra_checks(x, default, extra_checks), obj))
-        return rev if len(obj) > 1 else rev[0]
+        return rev if objlen > 1 else rev[0]
 
 
 check_str = TypeCheck(str)
