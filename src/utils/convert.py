@@ -162,8 +162,6 @@ class Converter:
         """保存为svm格式"""
         tools.check_str(save_path)
         tools.check_callable(generate_func)
-        if not os.path.exists(os.path.dirname(save_path)):
-            os.makedirs(os.path.dirname(save_path))
         if self.__processes > 1:
             args = [(label, value) for label, value in zip(self.__labels, values)]
             with Pool(processes=self.__processes) as pool:
@@ -180,18 +178,12 @@ class Converter:
     def tfidf_to_svm(self, save_path: str = None) -> str:
         """保存tf-idf为svm格式"""
         if save_path is None:
-            if hasattr(self.__dataset, 'dataset_title'):
-                save_path = rf'.\svm\data\{self.__dataset.dataset_title}.txt'
-            else:
-                save_path = rf'.\svm\data\tfidf_to_svm_output({time.time()}).txt'
+            save_path = rf'.\svm\data\tfidf_to_svm_output({time.time()}).txt'
         return self.__to_svm(save_path, self._tfidf_generate_line, self.tfidf_matrix)
 
     def word2vec_to_svm(self, save_path: str = None) -> str:
         if save_path is None:
-            if hasattr(self.__dataset, 'dataset_title'):
-                save_path = rf'.\svm\data\{self.__dataset.dataset_title}.txt'
-            else:
-                save_path = rf'.\svm\data\word2vec_to_svm_output({time.time()}).txt'
+            save_path = rf'.\svm\data\word2vec_to_svm_output({time.time()}).txt'
         return self.__to_svm(save_path, self._word2vec_generate_line, self.word2vec_dataset.values)
 
     @staticmethod

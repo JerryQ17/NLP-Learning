@@ -18,7 +18,6 @@ class IMDBDataset(Dataset):
         self.__items: list[tuple[str, bool]] | None = None
 
         self.__dataset_pathname: str | None = None
-        self.__dataset_title: str | None = None
         self.dataset_pathname = dataset_pathname
 
     def __len__(self):
@@ -37,17 +36,10 @@ class IMDBDataset(Dataset):
     @dataset_pathname.setter
     def dataset_pathname(self, dataset_pathname: str):
         """数据集路径必须存在，且必须是csv文件"""
-        title, ext = os.path.splitext(tools.check_file(dataset_pathname))
-        if ext != '.csv':
+        if os.path.splitext(tools.check_file(dataset_pathname))[1] != '.csv':
             raise ValueError('数据集必须是csv文件')
         self.__dataset_pathname = dataset_pathname
-        self.__dataset_title = title
         self._read()
-
-    @property
-    def dataset_title(self):
-        """数据集标题"""
-        return self.__dataset_title
 
     @property
     def items(self):
