@@ -268,7 +268,7 @@ class TypeCheck(_BaseTypeCheck):
             else:
                 o_repr = repr(o)
                 if len(o_repr) > 25:
-                    o_repr = o[:25] + '...'
+                    o_repr = o_repr[:25] + '...'
                 raise TypeError(f'The parameter type must be {self.types}, got {o_repr} , type {type(o)}')
 
         return tuple(rev) if len(rev) > 1 else rev[0]
@@ -290,9 +290,9 @@ class StrictTypeCheck(_BaseTypeCheck):
         if default is not None and obj == tuple(default for _ in range(len(obj))):
             return obj
         for checker in map(TypeCheck, self.types):
-            obj = checker(*obj, default=default, include_none=include_none)
+            checker(*obj, default=default, include_none=include_none)
         rev = tuple(map(lambda x: self._extra_checks(x, default, extra_checks), obj))
-        return rev if len(rev) > 1 else rev[0]
+        return rev if len(obj) > 1 else rev[0]
 
 
 check_str = TypeCheck(str)
