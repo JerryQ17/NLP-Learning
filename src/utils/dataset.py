@@ -15,7 +15,7 @@ class IMDBDataset(Dataset):
         """
         :param dataset_pathname: 数据集路径
         """
-        self.__items: ndarray | None = None
+        self.__items: list[tuple[str, bool]] | None = None
 
         self.__dataset_pathname: str | None = None
         self.__dataset_title: str | None = None
