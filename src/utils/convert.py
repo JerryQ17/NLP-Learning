@@ -21,10 +21,10 @@ class Converter:
         self.__logger: logging.Logger | None = None
         self.logger = logger
         # 数据集
-        self.__dataset: Dataset | None = None
-        self.dataset = dataset
         self.__reviews: tuple[str] | None = None
         self.__labels: tuple[bool] | None = None
+        self.__dataset: Dataset | None = None
+        self.dataset = dataset
         # 进程数
         self.__processes: int | None = None
         self.processes = processes
@@ -134,7 +134,7 @@ class Converter:
         self.__tfidf_matrix = vectorizer.fit_transform(self.__reviews)
         self.__feature_names = vectorizer.get_feature_names_out()  # 检索词汇表
         self.__feature_names.setflags(write=False)
-        self.__tfidf_dataset = TfIdfDataset(self.__tfidf_matrix, np.array(self.__labels, dtype=np.bool))
+        self.__tfidf_dataset = TfIdfDataset(self.__tfidf_matrix, np.array(self.__labels, dtype=bool))
         return self.__tfidf_dataset
 
     def word2vec(self, **kwargs):
@@ -155,7 +155,7 @@ class Converter:
             if word_count > 0:
                 sentence_vector /= word_count
             sentence_vectors.append(sentence_vector)
-        self.__word2vec_dataset = Word2VecDataset(sentence_vectors, np.array(self.__labels, dtype=np.bool))
+        self.__word2vec_dataset = Word2VecDataset(sentence_vectors, np.array(self.__labels, dtype=bool))
         return self.__word2vec_dataset
 
     def __to_svm(self, save_path: str, generate_func: Callable, values: csr_matrix | list[np.ndarray]) -> str:
