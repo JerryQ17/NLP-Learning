@@ -98,11 +98,11 @@ class Trainer:
         self.word2vec_dataset = word2vec_dataset
 
         # SVM
+        self.__svm: SVM = SVM()
         self.__svm_train_path: str | None = None
         self.svm_train_path = svm_train_path
         self.__svm_model_path: str | None = None
         self.svm_model_path = svm_model_path
-        self.__svm: SVM = SVM(self.__svm_train_path, self.__svm_model_path)
 
         # Neural Network
         self.__nn_training_state: NNTrainingState = NNTrainingState()
