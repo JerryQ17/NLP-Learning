@@ -11,11 +11,18 @@ class LSTMModel(nn.Module):
             fc: nn.Module = None, dropout_rate: float = 0,
             device: torch.device = torch.device('cpu')
     ):
+        # noinspection PyTypeChecker
+        def check_pint(obj: int, include_none: bool = False, default: str = None) -> int:
+            return tools.TypeCheck(int)(
+                obj, include_none=include_none, default=default,
+                extra_checks=[(lambda x: x > 0, ValueError('参数应为正整数'))]
+            )
+
         super().__init__()
-        self.__input_dim: int = tools.TypeCheck(int)(input_dim)
-        self.__hidden_dim: int = tools.TypeCheck(int)(hidden_dim)
-        self.__num_layers: int = tools.TypeCheck(int)(num_layers)
-        self.__output_dim: int = tools.TypeCheck(int)(output_dim)
+        self.__input_dim = check_pint(input_dim)
+        self.__hidden_dim = check_pint(hidden_dim)
+        self.__num_layers = check_pint(num_layers)
+        self.__output_dim = check_pint(output_dim)
         self.__device: torch.device = tools.TypeCheck(torch.device)(device)
         # LSTM层
         self.__lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True)
