@@ -241,7 +241,7 @@ class SVM:
 
     def __single_grid(self, c: float, g: float, problem_path: str, n_fold: int):
         start_time = time.time()
-        self.__logger.info(f'epoch {len(self.__state.results) + 1}\ncurrent c: {c}, current g: {g}')
+        self.__logger.info(f'epoch {len(self.__state.results) + 1} current c: {c}, current g: {g}')
         accuracy = self.train(problem_path, n_fold=n_fold, gamma=g, cost=c)
         self.__state.results = tuple([_ for _ in self.__state.results] + [GridResult(c=c, g=g, accuracy=accuracy)])
 
