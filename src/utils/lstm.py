@@ -1,6 +1,8 @@
 import torch
 from torch import nn
 
+from src.utils import tools
+
 
 class LSTMModel(nn.Module):
     def __init__(
@@ -10,32 +12,15 @@ class LSTMModel(nn.Module):
             device: torch.device = torch.device('cpu')
     ):
         super().__init__()
-        if not isinstance(input_dim, int):
-            raise TypeError(f'input_dim应为int类型，而不是{type(input_dim)}类型')
-        if not isinstance(hidden_dim, int):
-            raise TypeError(f'hidden_dim应为int类型，而不是{type(hidden_dim)}类型')
-        if not isinstance(num_layers, int):
-            raise TypeError(f'num_layers应为int类型，而不是{type(num_layers)}类型')
-        if not isinstance(output_dim, int):
-            raise TypeError(f'output_dim应为int类型，而不是{type(output_dim)}类型')
-        if not isinstance(device, torch.device):
-            raise TypeError(f'device应为torch.device类型，而不是{type(device)}类型')
-
-        self.__input_dim: int = input_dim
-        self.__hidden_dim: int = hidden_dim
-        self.__num_layers: int = num_layers
-        self.__output_dim: int = output_dim
-        self.__device: torch.device = device
-
+        self.__input_dim: int = tools.TypeCheck(int)(input_dim)
+        self.__hidden_dim: int = tools.TypeCheck(int)(hidden_dim)
+        self.__num_layers: int = tools.TypeCheck(int)(num_layers)
+        self.__output_dim: int = tools.TypeCheck(int)(output_dim)
+        self.__device: torch.device = tools.TypeCheck(torch.device)(device)
         # LSTM层
         self.__lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True)
         # 全连接层
-        if fc is None:
-            self.__fc = nn.Linear(hidden_dim, output_dim)
-        else:
-            if not isinstance(fc, nn.Module):
-                raise TypeError(f'全连接层应为nn.Module类型，而不是{type(fc)}类型')
-            self.__fc = fc
+        self.__fc = nn.Linear(hidden_dim, output_dim) if fc is None else tools.TypeCheck(nn.Module)(fc)
         # dropout层
         self.__dropout_rate: float | None = None
         self.__dropout: nn.Dropout | None = None
