@@ -5,7 +5,9 @@ import signal
 import logging
 from torch import nn
 from types import FrameType
+import matplotlib.pyplot as plt
 from torch.optim import Optimizer
+from torch.return_types import max
 from torch.utils.data import Dataset, DataLoader
 
 from src.utils import tools
@@ -225,23 +227,27 @@ class Trainer:
         if self.__criterion:
             self.__criterion = self.__criterion.to(self.__device)
 
-    def __ready_to_train_nn(self):
+    def __nn_ready_to_use(self):
         if self.__model is None:
             raise ValueError('请先设置model')
+
+    def __nn_ready_to_train(self):
+        self.__nn_ready_to_use()
         if self.__optimizer is None:
             raise ValueError('请先设置optimizer')
         if self.__criterion is None:
             raise ValueError('请先设置criterion')
 
     def train(self, epochs: int = 1, *,
-              tfidf_mode: bool = False, word2vec_mode: bool = False, **dataloader_kwargs) -> 'Trainer':
+              tfidf_mode: bool = False, word2vec_mode: bool = False,
+              draw: bool = False, **dataloader_kwargs) -> 'Trainer':
         # 检查内部属性
-        self.__ready_to_train_nn()
+        self.__nn_ready_to_train()
         # 检查参数
-        if bool(tfidf_mode) == bool(word2vec_mode):
+        tools.check_pint(epochs)
+        tfidf_mode, word2vec_mode = bool(tfidf_mode), bool(word2vec_mode)
+        if tfidf_mode == word2vec_mode:
             raise ValueError('svm_mode和word2vec_mode不能同时为True或同时为False')
-        if not isinstance(epochs, int) and epochs < 1:
-            raise ValueError('epochs必须是一个正整数')
         if 'dataset' in dataloader_kwargs:
             raise ValueError('loader_kwargs不能包含dataset参数')
         # 选择数据集并转化为DataLoader
@@ -262,24 +268,37 @@ class Trainer:
             self.__nn_training_state.total_epoch = epochs
 
         try:
+            len_loader = len(loader)
+            losses = []
             for epoch in range(epochs):
                 self.__logger.info(f"Epoch {epoch + 1}/{epochs}")
                 for i, (texts, labels) in enumerate(loader):
-                    texts = torch.Tensor(texts).to(self.__device).float()
-                    labels = torch.Tensor(labels).type(torch.LongTensor).to(self.__device)
+                    texts = texts.float().to(self.__device)
+                    labels = labels.float().to(self.__device)
 
                     outputs = self.__model(texts)
-                    loss = self.__criterion(outputs, labels)
+                    loss = self.__criterion(outputs[:, 0], labels)
 
                     self.__optimizer.zero_grad()
                     loss.backward()
                     self.__optimizer.step()
+
+                    if draw:
+                        losses.append(loss.item())
+
                     if (i + 1) % 100 == 0:
-                        self.__logger.info(f"Step {i + 1}/{len(loader)}, Loss: {loss.item():.4f}")
+                        self.__logger.info(f"Step {i + 1}/{len_loader}, Loss: {loss.item():.4f}")
                 if self.autosave:
                     self.__nn_training_state.current_epoch = epoch
                     self.__nn_training_state.model_state_dict = self.__model.state_dict()
                     self.__nn_training_state.optimizer_state_dict = self.__optimizer.state_dict()
+                if draw:
+                    plt.figure(figsize=(24, 4))
+                    plt.plot(losses, color='blue')
+                    plt.xlabel('Step')
+                    plt.ylabel('Loss')
+                    plt.title('Loss Curve')
+                    plt.show()
             return self
         except Exception as error:
             self.__logger.exception('训练时遇到错误', exc_info=error)
@@ -288,18 +307,17 @@ class Trainer:
 
     def train_from_state(self, path: str, *,
                          tfidf_mode: bool = False, word2vec_mode: bool = False,
-                         **dataloader_kwargs) -> 'Trainer':
+                         draw: bool = False, **dataloader_kwargs) -> 'Trainer':
         tools.check_file(path)
-        self.__ready_to_train_nn()
+        self.__nn_ready_to_train()
         self.__nn_training_state = NNTrainingState(**torch.load(path))
         self.__model.load_state_dict(self.__nn_training_state.model_state_dict)
         self.__optimizer.load_state_dict(self.__nn_training_state.optimizer_state_dict)
         epoch = self.__nn_training_state.total_epoch - self.__nn_training_state.current_epoch
-        return self.train(epoch, tfidf_mode=tfidf_mode, word2vec_mode=word2vec_mode, **dataloader_kwargs)
+        return self.train(epoch, tfidf_mode=tfidf_mode, word2vec_mode=word2vec_mode, draw=draw, **dataloader_kwargs)
 
     def evaluate(self, test_loader: DataLoader) -> float:
-        if self.__model is None:
-            raise RuntimeError('请先设置model')
+        self.__nn_ready_to_use()
         tools.TypeCheck(DataLoader)(test_loader)
 
         self.__model.to(self.__device)
@@ -309,8 +327,8 @@ class Trainer:
             correct = 0
             total = 0
             for texts, labels in test_loader:
-                texts = torch.Tensor(texts)
-                labels = torch.Tensor(labels).type(torch.LongTensor)
+                texts = torch.Tensor(texts).float().to(self.__device)
+                labels = torch.Tensor(labels).float().to(self.__device)
 
                 outputs = self.__model(texts)
                 _, predicted = torch.max(outputs.data, 1)
@@ -318,7 +336,8 @@ class Trainer:
                 correct += torch.sum(predicted.eq(labels)).item()
             return 100 * correct / total
 
-    def predict(self, texts: torch.Tensor) -> torch.Tensor:
+    def predict(self, texts: torch.Tensor) -> max:
+        self.__nn_ready_to_use()
         if self.__model is None:
             raise RuntimeError('请先设置model')
         tools.TypeCheck(torch.Tensor)(texts)
@@ -327,18 +346,15 @@ class Trainer:
         self.__model.eval()
 
         with torch.no_grad():
-            outputs: torch.Tensor = self.__model(texts)
-            _, predicted = torch.max(outputs.data, 1)
-        return predicted
+            outputs: torch.Tensor = self.__model(texts.to(self.__device))
+            return torch.max(outputs, 1)
 
-    def save(self, save_path: str = r'.\lstm\model\lstm.pth') -> str:
-        if self.__model is None:
-            raise RuntimeError('请先设置model')
-        torch.save(self.__model.state_dict(), tools.check_str(save_path))
-        return os.path.abspath(save_path)
+    def save(self, path: str = r'.\lstm\model\lstm.pth') -> str:
+        self.__nn_ready_to_use()
+        torch.save(self.__model.state_dict(), tools.check_str(path))
+        return os.path.abspath(path)
 
-    def load(self, load_path: str):
-        if self.__model is None:
-            raise RuntimeError('请先设置model')
-        self.__model.load_state_dict(torch.load(tools.check_file(load_path)))
+    def load(self, path: str):
+        self.__nn_ready_to_use()
+        self.__model.load_state_dict(torch.load(tools.check_file(path)))
         return self

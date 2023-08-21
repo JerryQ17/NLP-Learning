@@ -341,3 +341,47 @@ def check_dir(dir_path: str, include_none: bool = False, default: str = None) ->
         extra_checks=[(os.path.isdir, FileNotFoundError(f'directory {dir_path} not found'))]
     )
     return checked if checked is None else os.path.abspath(checked)
+
+
+# noinspection PyTypeChecker
+def check_pint(positive_integer: int, include_none: bool = False, default: str = None) -> int:
+    """
+    检查是否为正(positive)整数，如果是，返回该整数，否则抛出ValueError
+
+    Args:
+        positive_integer: 要检查的整数
+        include_none: 是否允许positive_integer为None
+        default: 如果positive_integer不是正整数，返回的默认值
+
+    Returns:
+        positive_integer
+    """
+    return TypeCheck(int)(
+        positive_integer, include_none=include_none, default=default,
+        extra_checks=[(lambda x: x > 0, ValueError('positive integer required'))]
+    )
+
+
+# noinspection PyTypeChecker
+def check_nnfloat(non_negative_float: float, include_none: bool = False, default: str = None,
+                  auto_convert: bool = False) -> float:
+    """
+    检查是否为非负(non negative)浮点数，如果是，返回该浮点数，否则抛出ValueError
+
+    Args:
+        non_negative_float: 要检查的浮点数
+        include_none: 是否允许non_negative_float为None
+        default: 如果non_negative_float不是非负浮点数，返回的默认值
+        auto_convert: 是否尝试转换为浮点数
+
+    Returns:
+        non_negative_float
+
+    Notes:
+        此函数默认不接受整数，当输入可能为整数时，请设置auto_convert为True，自动转换为浮点数
+    """
+    return TypeCheck(float)(
+        float(non_negative_float) if auto_convert else non_negative_float,
+        include_none=include_none, default=default,
+        extra_checks=[(lambda x: x >= 0, ValueError('non negative float required'))]
+    )

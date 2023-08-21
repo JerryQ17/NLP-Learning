@@ -7,41 +7,34 @@ from src.utils import tools
 class LSTMModel(nn.Module):
     def __init__(
             self,
-            input_dim: int, hidden_dim: int, num_layers: int, output_dim: int,
-            fc: nn.Module = None, dropout_rate: float = 0,
+            input_size: int, hidden_size: int, num_layers: int,
+            output_size: int = None, fc: nn.Module = None, dropout: float = 0,
             device: torch.device = torch.device('cpu')
     ):
-        # noinspection PyTypeChecker
-        def check_pint(obj: int, include_none: bool = False, default: str = None) -> int:
-            return tools.TypeCheck(int)(
-                obj, include_none=include_none, default=default,
-                extra_checks=[(lambda x: x > 0, ValueError('参数应为正整数'))]
-            )
-
         super().__init__()
-        self.__input_dim = check_pint(input_dim)
-        self.__hidden_dim = check_pint(hidden_dim)
-        self.__num_layers = check_pint(num_layers)
-        self.__output_dim = check_pint(output_dim)
+        self.__input_size = tools.check_pint(input_size)
+        self.__hidden_size = tools.check_pint(hidden_size)
+        self.__num_layers = tools.check_pint(num_layers)
+        self.__output_size = tools.check_pint(output_size, include_none=True)
         self.__device: torch.device = tools.TypeCheck(torch.device)(device)
         # LSTM层
-        self.__lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True)
+        self.__lstm = nn.LSTM(
+            input_size=self.__input_size, hidden_size=self.__hidden_size,
+            num_layers=self.__num_layers, dropout=tools.check_nnfloat(dropout, auto_convert=True),
+            batch_first=True
+        )
         # 全连接层
-        self.__fc = nn.Linear(hidden_dim, output_dim) if fc is None else tools.TypeCheck(nn.Module)(fc)
-        # dropout层
-        self.__dropout_rate: float | None = None
-        self.__dropout: nn.Dropout | None = None
-        self.dropout_rate = dropout_rate
+        self.__fc = nn.Linear(hidden_size, output_size) if fc is None else tools.TypeCheck(nn.Module)(fc)
         # sigmoid层
         self.__sigmoid = nn.Sigmoid()
         # 将模型移动到指定设备
         self.to(self.__device)
 
     def forward(self, input_tensor: torch.Tensor):
-        lstm_out, _ = self.__lstm(input_tensor.view(len(input_tensor), 1, -1))
-        fc_out = self.__fc(lstm_out.view(len(input_tensor), -1))
-        if self.__dropout is not None:
-            fc_out = self.__dropout(fc_out)
+        # lstm_out, _ = self.__lstm(input_tensor.view(len(input_tensor), 1, -1))
+        # fc_out = self.__fc(lstm_out.view(len(input_tensor), -1))
+        lstm_out, _ = self.__lstm(input_tensor)
+        fc_out = self.__fc(lstm_out[:, -1, :])
         sigmoid_out = self.__sigmoid(fc_out)
         return sigmoid_out
 
@@ -50,46 +43,24 @@ class LSTMModel(nn.Module):
         return self.__device
 
     @property
-    def input_dim(self):
-        return self.__input_dim
+    def input_size(self):
+        return self.__input_size
 
     @property
-    def hidden_dim(self):
-        return self.__hidden_dim
+    def hidden_size(self):
+        return self.__hidden_size
 
     @property
     def num_layers(self):
         return self.__num_layers
 
     @property
-    def output_dim(self):
-        return self.__output_dim
+    def output_size(self):
+        return self.__output_size
 
     @property
     def lstm(self):
         return self.__lstm
-
-    @property
-    def dropout_rate(self):
-        return self.__dropout_rate
-
-    @dropout_rate.setter
-    def dropout_rate(self, value: float):
-        try:
-            value = float(value)
-        except ValueError:
-            raise ValueError(f'droupout_rate应为float类型，而不是{type(value)}类型')
-        if value < 0 or value > 1:
-            raise ValueError(f'droupout_rate应在0到1之间，而不是{value}')
-        self.__dropout_rate = value
-        if value == 0:
-            self.__dropout = None
-        else:
-            self.__dropout = nn.Dropout(value).to(self.__device)
-
-    @property
-    def dropout(self):
-        return self.__dropout
 
     @property
     def fc(self):
