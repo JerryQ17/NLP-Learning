@@ -11,6 +11,8 @@ class LSTMModel(nn.Module):
             output_size: int = None, fc: nn.Module = None, dropout: float = 0,
             device: torch.device = torch.device('cpu')
     ):
+        if output_size is None and fc is None:
+            raise ValueError('output_size和fc不能同时为None')
         super().__init__()
         self.__input_size = tools.check_pint(input_size)
         self.__hidden_size = tools.check_pint(hidden_size)
@@ -31,8 +33,6 @@ class LSTMModel(nn.Module):
         self.to(self.__device)
 
     def forward(self, input_tensor: torch.Tensor):
-        # lstm_out, _ = self.__lstm(input_tensor.view(len(input_tensor), 1, -1))
-        # fc_out = self.__fc(lstm_out.view(len(input_tensor), -1))
         lstm_out, _ = self.__lstm(input_tensor)
         fc_out = self.__fc(lstm_out[:, -1, :])
         sigmoid_out = self.__sigmoid(fc_out)
