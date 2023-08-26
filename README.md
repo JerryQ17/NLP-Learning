@@ -133,7 +133,7 @@ nn.Sequential(
 
 一共训练了10个epoch，损失值的变化如图所示：
 
-![image-20230826120448297](./assets/lossoftfidfls.png)
+![lossoftfidflstm](./assets/lossoftfidflstm.png)
 
 我认为模型已经收敛了，所以终止了训练。
 
