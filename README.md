@@ -33,65 +33,109 @@
 
 ## 实验准备
 
-因为之前没有使用过`conda`，所以我选择使用`venv`管理`python packages`。
-
-你应当按照如下所述的方法配置本项目。
+Python虚拟环境是一种用于在单个系统中隔离和管理不同Python项目的工具。每个环境都有自己的包安装和依赖关系。这样可以防止不同项目之间的包冲突，确保项目之间的隔离性。
 
 ### 创建虚拟环境
 
-在项目根目录中打开`powershell`，输入以下代码：
+我们使用`conda`或`venv`来创建并管理Python虚拟环境。
+
+推荐使用`conda`，因为本项目开发于Python3.10版本，`conda`允许创建虚拟环境时指定Python版本，而`venv`则依赖于系统Python。
+
+也就是说，如果你使用`venv`，则必须确保系统Python版本为3.10。
+
+#### conda
+
+运行以下命令：
+
+```powershell
+conda create -n nlp python=3.10
+```
+
+创建了一个名为`nlp`的虚拟环境，并指定Python版本为`3.10`
+
+#### venv
+
+> **Warning**: 使用`venv`虚拟环境时，要求系统Python版本为**3.10**
+
+在项目根目录中打开`powershell`，运行以下命令：
 
 ```powershell
 python -m venv venv
 ```
 
-创建了一个名为`venv`的虚拟环境。你会发现根目录中多了一个名为`venv`的文件夹。
+创建了一个名为`venv`的虚拟环境
 
 ### 激活虚拟环境
 
-接着在刚刚的`powershell`中输入以下代码：
+#### conda
+
+运行以下命令以激活刚刚创建的`nlp`环境：
+
+```powershell
+conda activate nlp
+```
+
+#### venv
+
+运行以下命令以激活刚刚创建的`venv`环境：
 
 ```powershell
 .\venv\Scripts\activate.bat
 ```
 
-激活了刚刚创建的`venv`环境，你会发现`powershell`左侧多出了`(venv)`的提示。
-
 ### 安装项目依赖
 
-接着在刚刚的`powershell`中输入以下代码：
+>  Notes: 本步骤`conda`和`venv`通用。
+
+运行以下命令以安装除了`pytorch`以外的本项目的依赖包：
 
 ```powershell
 pip install -r requirements.txt
 ```
 
-安装了项目的依赖包，除了`pytorch`。
-
 ### 安装PyTorch
 
-> Notes: `Pytorch`的版本因人而异，我使用的版本不一定适合你，你应该前往[`Pytorch官网`](https://pytorch.org/)获取对应版本的`Pytorch`的安装链接。
+`Pytorch`的版本因人而异，你应该前往[`Pytorch官网`](https://pytorch.org/)获取对应版本的`Pytorch`的安装链接。
 
-> Notes: `Package`选项要选`Pip`，安装命令要在`venv`环境中安装。
+#### conda
 
-接着在刚刚的`powershell`中输入以下代码：
+> Notes: `Package`选择`Conda`，安装命令要在`nlp`环境中安装。
+
+运行以下命令以安装`pytorch preview for cuda 12.1`：
+
+```powershell
+conda install pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch-nightly -c nvidia
+```
+
+#### venv
+
+> Notes: `Package`选择`Pip`，安装命令要在`venv`环境中安装。
+
+运行以下命令以安装`pytorch preview for cuda 12.1`：
 
 ```powershell
 pip3 install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu121
 ```
 
-安装了`pytorch preview for cuda 12.1`。
-
 ### 退出虚拟环境
 
 这一步是可选的，如果你想立刻运行项目程序，则可以跳过这一步，如果你不想立刻运行项目程序，则可以直接退出虚拟环境。
 
-接着在刚刚的`powershell`中输入以下代码：
+#### conda
+
+运行以下命令以退出虚拟环境：
+
+```powershell
+conda deactivate
+```
+
+#### venv
+
+运行以下命令以退出虚拟环境：
 
 ```powershell
 deactivate
 ```
-
-这样就可以退出虚拟环境，并返回到本地环境中。
 
 ---
 
@@ -111,11 +155,11 @@ deactivate
 
 LSTM层的参数：
 
-|    参数     |    值    |
-| :---------: | :------: |
-| input_size  | `101895` |
-| hidden_size |  `256`   |
-| num_layers  |   `1`    |
+|     参数      |    值    |
+| :-----------: | :------: |
+| `input_size`  | `101895` |
+| `hidden_size` |  `256`   |
+| `num_layers`  |   `1`    |
 
 LSTM层之后的全连接层：
 
@@ -135,7 +179,7 @@ nn.Sequential(
 
 ![lossoftfidflstm](./assets/lossoftfidflstm.png)
 
-我认为模型已经收敛了，所以终止了训练。
+因为后半部分的`loss`已经趋于稳定，我认为模型已经收敛了，所以我在第10个epoch结束时终止了训练。
 
 模型保存于[`.\lstm\model\new_train_lstm.pth`](.\lstm\model\new_train_lstm.pth)(未上传GitHub)
 
