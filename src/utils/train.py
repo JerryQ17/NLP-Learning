@@ -238,13 +238,85 @@ class Trainer:
         if self.__criterion is None:
             raise ValueError('请先设置criterion')
 
+    def __reset_nn_training_state(self, total_epoch: int = 0):
+        if self.__autosave:
+            self.__nn_training_state = NNTrainingState(total_epoch=total_epoch)
+
+    def __update_nn_training_state(self, epoch: int):
+        if self.__autosave:
+            self.__nn_training_state.current_epoch = epoch
+            self.__nn_training_state.model_state_dict = self.__model.state_dict()
+            self.__nn_training_state.optimizer_state_dict = self.__optimizer.state_dict()
+
+    def __single_train(self, loader: DataLoader) -> float:
+        try:
+            losses = []
+            self.__model.train()
+            self.__model.to(self.__device)
+            for texts, labels in loader:
+                texts = texts.float().to(self.__device)
+                labels = torch.Tensor([[1.0, 0.0] if j.item() else [0.0, 1.0] for j in labels]).to(self.__device)
+                loss = self.__criterion(self.__model(texts), labels)
+                self.__optimizer.zero_grad()
+                loss.backward()
+                self.__optimizer.step()
+                losses.append(loss.item())
+            return sum(losses) / len(losses)
+        except Exception as error:
+            self.__logger.exception('训练时遇到错误', exc_info=error)
+            self._auto_save_handler(error)
+            raise RuntimeError(error) from error
+
+    @staticmethod
+    def __draw_loss_curve(losses: list[float]):
+        plt.figure(figsize=(24, 4))
+        plt.plot(losses, color='blue')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.title('Loss Curve')
+        plt.show()
+
+    def early_stopping(self, train_dataloader: DataLoader, eval_dataloader: DataLoader, *,
+                       patience: int = 5, max_epoch: int = 10000, draw: bool = False) -> 'Trainer':
+        self.__nn_ready_to_train()
+        self.__reset_nn_training_state(max_epoch)
+
+        best_eval_loss = float('inf')
+        counter = 0
+        train_losses = []
+
+        for epoch in range(max_epoch):
+            self.__logger.info(f"Epoch {epoch + 1}")
+            train_losses.append(self.__single_train(train_dataloader))
+            self.__update_nn_training_state(epoch)
+            self.__model.eval()
+            eval_loss = 0.0
+            with torch.no_grad():
+                for texts, labels in eval_dataloader:
+                    texts = texts.float().to(self.__device)
+                    labels = torch.Tensor([[1.0, 0.0] if j.item() else [0.0, 1.0] for j in labels]).to(self.__device)
+                    eval_loss += self.__criterion(self.__model(texts), labels).item()
+            eval_loss /= len(eval_dataloader)
+            self.__logger.info(f'eval_loss: {eval_loss}, best_eval_loss: {best_eval_loss}')
+            if draw:
+                self.__draw_loss_curve(train_losses)
+            if eval_loss < best_eval_loss:
+                best_eval_loss = eval_loss
+                counter = 0
+            else:
+                counter += 1
+                if counter >= patience:
+                    self.__logger.info(f'Early stopping at epoch {epoch + 1}')
+                    break
+        return self
+
     def train(self, epochs: int = 1, *,
               tfidf_mode: bool = False, word2vec_mode: bool = False,
               draw: bool = False, **dataloader_kwargs) -> 'Trainer':
         # 检查内部属性
         self.__nn_ready_to_train()
         # 检查参数
-        tools.check_pint(epochs)
+        self.__reset_nn_training_state(tools.check_pint(epochs))
         tfidf_mode, word2vec_mode = bool(tfidf_mode), bool(word2vec_mode)
         if tfidf_mode == word2vec_mode:
             raise ValueError('svm_mode和word2vec_mode不能同时为True或同时为False')
@@ -260,49 +332,17 @@ class Trainer:
                 raise ValueError('word2vec_dataset不能为None')
             loader = DataLoader(dataset=self.__word2vec_dataset, **dataloader_kwargs)
 
-        self.__model.to(self.__device)
-        self.__model.train()
-
-        if self.autosave:
-            self.__nn_training_state.current_epoch = 0
-            self.__nn_training_state.total_epoch = epochs
-
-        try:
-            len_loader = len(loader)
-            losses = []
-            for epoch in range(epochs):
-                self.__logger.info(f"Epoch {epoch + 1}/{epochs}")
-                for i, (texts, labels) in enumerate(loader):
-                    texts = texts.float().to(self.__device)
-                    labels = torch.Tensor([[1.0, 0.0] if j.item() else [0.0, 1.0] for j in labels]).to(self.__device)
-                    outputs = self.__model(texts)
-                    loss = self.__criterion(outputs, labels)
-
-                    self.__optimizer.zero_grad()
-                    loss.backward()
-                    self.__optimizer.step()
-
-                    if draw:
-                        losses.append(loss.item())
-
-                    if (i + 1) % 100 == 0:
-                        self.__logger.info(f"Step {i + 1}/{len_loader}, Loss: {loss.item():.4f}")
-                if self.autosave:
-                    self.__nn_training_state.current_epoch = epoch
-                    self.__nn_training_state.model_state_dict = self.__model.state_dict()
-                    self.__nn_training_state.optimizer_state_dict = self.__optimizer.state_dict()
-                if draw:
-                    plt.figure(figsize=(24, 4))
-                    plt.plot(losses, color='blue')
-                    plt.xlabel('Step')
-                    plt.ylabel('Loss')
-                    plt.title('Loss Curve')
-                    plt.show()
-            return self
-        except Exception as error:
-            self.__logger.exception('训练时遇到错误', exc_info=error)
-            self._auto_save_handler(error)
-            raise RuntimeError(error) from error
+        losses = []
+        for epoch in range(epochs):
+            self.__logger.info(f"Epoch {epoch + 1}/{epochs}")
+            losses.append(self.__single_train(loader))
+            if self.__autosave:
+                self.__nn_training_state.current_epoch = epoch
+                self.__nn_training_state.model_state_dict = self.__model.state_dict()
+                self.__nn_training_state.optimizer_state_dict = self.__optimizer.state_dict()
+            if draw:
+                self.__draw_loss_curve(losses)
+        return self
 
     def train_from_state(self, path: str, *,
                          tfidf_mode: bool = False, word2vec_mode: bool = False,
@@ -315,18 +355,15 @@ class Trainer:
         epoch = self.__nn_training_state.total_epoch - self.__nn_training_state.current_epoch
         return self.train(epoch, tfidf_mode=tfidf_mode, word2vec_mode=word2vec_mode, draw=draw, **dataloader_kwargs)
 
-    def evaluate(self, dataset: Dataset) -> float:
+    def evaluate(self, loader: DataLoader) -> float:
         self.__nn_ready_to_use()
-        tools.check_dataset(dataset)
-        test_loader = DataLoader(dataset=dataset, batch_size=64, num_workers=5)
-
+        tools.TypeCheck(DataLoader)(loader)
         self.__model.to(self.__device)
         self.__model.eval()
-
         with torch.no_grad():
             correct = 0
             total = 0
-            for texts, labels in test_loader:
+            for texts, labels in loader:
                 texts: torch.Tensor = torch.Tensor(texts).float().to(self.__device)
                 labels: torch.Tensor = torch.Tensor(labels).float().to(self.__device)
                 outputs: torch.Tensor = self.__model(texts)
