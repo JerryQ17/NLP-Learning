@@ -274,10 +274,9 @@ class Trainer:
                 self.__logger.info(f"Epoch {epoch + 1}/{epochs}")
                 for i, (texts, labels) in enumerate(loader):
                     texts = texts.float().to(self.__device)
-                    labels = labels.float().to(self.__device)
-
+                    labels = torch.Tensor([[1.0, 0.0] if j.item() else [0.0, 1.0] for j in labels]).to(self.__device)
                     outputs = self.__model(texts)
-                    loss = self.__criterion(outputs[:, 0], labels)
+                    loss = self.__criterion(outputs, labels)
 
                     self.__optimizer.zero_grad()
                     loss.backward()
@@ -316,9 +315,10 @@ class Trainer:
         epoch = self.__nn_training_state.total_epoch - self.__nn_training_state.current_epoch
         return self.train(epoch, tfidf_mode=tfidf_mode, word2vec_mode=word2vec_mode, draw=draw, **dataloader_kwargs)
 
-    def evaluate(self, test_loader: DataLoader) -> float:
+    def evaluate(self, dataset: Dataset) -> float:
         self.__nn_ready_to_use()
-        tools.TypeCheck(DataLoader)(test_loader)
+        tools.check_dataset(dataset)
+        test_loader = DataLoader(dataset=dataset, batch_size=64, num_workers=5)
 
         self.__model.to(self.__device)
         self.__model.eval()
@@ -327,13 +327,11 @@ class Trainer:
             correct = 0
             total = 0
             for texts, labels in test_loader:
-                texts = torch.Tensor(texts).float().to(self.__device)
-                labels = torch.Tensor(labels).float().to(self.__device)
-
-                outputs = self.__model(texts)
-                _, predicted = torch.max(outputs.data, 1)
+                texts: torch.Tensor = torch.Tensor(texts).float().to(self.__device)
+                labels: torch.Tensor = torch.Tensor(labels).float().to(self.__device)
+                outputs: torch.Tensor = self.__model(texts)
+                correct += torch.sum((outputs[:, 0] >= outputs[:, 1]) == labels).item()
                 total += labels.size(0)
-                correct += torch.sum(predicted.eq(labels)).item()
             return 100 * correct / total
 
     def predict(self, texts: torch.Tensor) -> max:

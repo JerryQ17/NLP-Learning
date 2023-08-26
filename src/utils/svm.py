@@ -145,7 +145,7 @@ class SVM:
         :param n_fold: n-fold cross validation mode
         :return: 训练好的模型
         """
-        tools.check_file(problem_path)
+        tools.check_file(problem_path, include_none=True)
         tools.TypeCheck(int)(shrinking, probability_estimates, include_none=True,
                              extra_checks=[(lambda x: x in (0, 1), ValueError('shrinking必须是0或1'))])
         # 生成参数字符串
@@ -199,11 +199,11 @@ class SVM:
                 if model_path is not None and os.path.isfile(model_path):
                     self.__logger.warning('因为model和model_path同时存在，model_path参数已被忽略')
         else:
-            model = self.__model
             if model is not None:
                 self.__logger.warning('因为已加载模型，model参数已被忽略')
             if model_path is not None:
                 self.__logger.warning('因为已加载模型，model_path参数已被忽略')
+            model = self.__model
         tools.TypeCheck(int)(probability_estimates, include_none=True,
                              extra_checks=[(lambda i: i in (0, 1), ValueError('probability_estimates必须是0或1'))])
 
