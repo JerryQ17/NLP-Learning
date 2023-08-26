@@ -139,7 +139,7 @@ class Converter:
 
     def word2vec(self, **kwargs):
         """计算词向量"""
-        if "sentences" in kwargs:
+        if "sentences" not in kwargs:
             kwargs.update(sentences=[review.split() for review in self.__reviews])
         if "workers" not in kwargs:
             kwargs.update(workers=self.__processes)
