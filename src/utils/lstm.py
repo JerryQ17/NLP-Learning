@@ -34,7 +34,7 @@ class LSTMModel(nn.Module):
 
     def forward(self, input_tensor: torch.Tensor):
         lstm_out, _ = self.__lstm(input_tensor)
-        fc_out = self.__fc(lstm_out[:, -1, :])
+        fc_out = self.__fc(lstm_out)
         sigmoid_out = self.__sigmoid(fc_out)
         return sigmoid_out
 
