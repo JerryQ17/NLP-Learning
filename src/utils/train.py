@@ -248,14 +248,18 @@ class Trainer:
             self.__nn_training_state.model_state_dict = self.__model.state_dict()
             self.__nn_training_state.optimizer_state_dict = self.__optimizer.state_dict()
 
+    def __transform_tensors(self, texts: torch.Tensor, labels: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        texts = texts.float().to(self.__device)
+        labels = torch.Tensor([[1.0, 0.0] if j.item() else [0.0, 1.0] for j in labels]).to(self.__device)
+        return texts, labels
+
     def __single_train(self, loader: DataLoader) -> float:
         try:
             losses = []
             self.__model.train()
             self.__model.to(self.__device)
             for texts, labels in loader:
-                texts = texts.float().to(self.__device)
-                labels = torch.Tensor([[1.0, 0.0] if j.item() else [0.0, 1.0] for j in labels]).to(self.__device)
+                texts, labels = self.__transform_tensors(texts, labels)
                 loss = self.__criterion(self.__model(texts), labels)
                 self.__optimizer.zero_grad()
                 loss.backward()
@@ -293,8 +297,7 @@ class Trainer:
             eval_loss = 0.0
             with torch.no_grad():
                 for texts, labels in eval_dataloader:
-                    texts = texts.float().to(self.__device)
-                    labels = torch.Tensor([[1.0, 0.0] if j.item() else [0.0, 1.0] for j in labels]).to(self.__device)
+                    texts, labels = self.__transform_tensors(texts, labels)
                     eval_loss += self.__criterion(self.__model(texts), labels).item()
             eval_loss /= len(eval_dataloader)
             self.__logger.info(f'eval_loss: {eval_loss}, best_eval_loss: {best_eval_loss}')
@@ -321,7 +324,7 @@ class Trainer:
         if tfidf_mode == word2vec_mode:
             raise ValueError('svm_mode和word2vec_mode不能同时为True或同时为False')
         if 'dataset' in dataloader_kwargs:
-            raise ValueError('loader_kwargs不能包含dataset参数')
+            raise ValueError('dataloader_kwargs不能包含dataset参数')
         # 选择数据集并转化为DataLoader
         if tfidf_mode:
             if self.__tfidf_dataset is None:
@@ -336,10 +339,7 @@ class Trainer:
         for epoch in range(epochs):
             self.__logger.info(f"Epoch {epoch + 1}/{epochs}")
             losses.append(self.__single_train(loader))
-            if self.__autosave:
-                self.__nn_training_state.current_epoch = epoch
-                self.__nn_training_state.model_state_dict = self.__model.state_dict()
-                self.__nn_training_state.optimizer_state_dict = self.__optimizer.state_dict()
+            self.__update_nn_training_state(epoch)
             if draw:
                 self.__draw_loss_curve(losses)
         return self
@@ -382,7 +382,7 @@ class Trainer:
 
         with torch.no_grad():
             outputs: torch.Tensor = self.__model(texts.to(self.__device))
-            return torch.max(outputs, 1)
+            return torch.max(outputs, dim=0)
 
     def save(self, path: str = r'.\lstm\model\lstm.pth') -> str:
         self.__nn_ready_to_use()
