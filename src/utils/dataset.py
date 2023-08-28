@@ -1,11 +1,12 @@
 import os
 import csv
-from numpy import ndarray
 from random import sample
+from torch import stack, Tensor
+from numpy import array, ndarray
 from abc import ABC, abstractmethod
 from scipy.sparse import csr_matrix
 from torch.utils.data import Dataset
-from collections.abc import Sequence, Sized
+from collections.abc import Sized, Callable, Generator
 from typing import TypeVar, Protocol, runtime_checkable
 
 from src.utils import tools
@@ -19,23 +20,22 @@ class _SplittableDataset(Dataset, Sized, ABC):
         def __getitem__(self, item) -> tuple:
             pass
 
-    def _create_and_init_subset_with_data(self: __T, *index: int, **data: __Gettable) -> __T:
+    def _create_and_init_subset_with_data(self: __T,
+                                          *index: int,
+                                          **data: tuple[Callable[[Generator], __Gettable], __Gettable]) -> __T:
         """创建一个子集，其数据与当前数据集"""
         ds = object.__new__(self.__class__)
         for key, value in data.items():
-            setattr(ds, key, tuple(value[i] for i in index))
+            setattr(ds, key, value[0](value[1][i] for i in index))
         return ds
 
     @abstractmethod
     def get_subset(self: __T, *index: int) -> __T:
         """获取数据集中的某一子集"""
-        ds = object.__new__(self.__class__)
-        ds.__items = tuple(self[i] for i in index)
-        return ds
 
     def split(self: __T, ratio: float, shuffle: bool = False) -> tuple[__T, __T]:
         """将数据集分割为两个子集"""
-        tools.TypeCheck(int, float)(ratio, extra_checks=[(lambda x: 0 <= x <= 1, ValueError('ratio必须在0和1之间'))])
+        tools.TypeCheck(float)(ratio, extra_checks=[(lambda x: 0 < x < 1, ValueError('ratio ∈ (0, 1)'))])
         length = len(self)
         split_index = int(length * ratio)
         if shuffle:
@@ -93,7 +93,7 @@ class IMDBDataset(_SplittableDataset):
 
     def get_subset(self, *index: int) -> 'IMDBDataset':
         """获取数据集中的某一子集"""
-        subset = self._create_and_init_subset_with_data(*index, _IMDBDataset__items=self.__items)
+        subset = self._create_and_init_subset_with_data(*index, _IMDBDataset__items=(tuple, self.__items))
         subset.__dataset_pathname = self.__dataset_pathname
         return subset
 
@@ -139,7 +139,9 @@ class TfIdfDataset(_SplittableDataset):
     def get_subset(self, *index: int) -> 'TfIdfDataset':
         """获取数据集中的某一子集"""
         subset = self._create_and_init_subset_with_data(
-            *index, _TfIdfDataset__values=self.__values, _TfIdfDataset__labels=self.__labels
+            *index,
+            _TfIdfDataset__values=(lambda x: x, self.__values),
+            _TfIdfDataset__labels=(lambda x: array(tuple(x)), self.__labels)
         )
         subset.labels.setflags(write=False)
         return subset
@@ -148,23 +150,19 @@ class TfIdfDataset(_SplittableDataset):
 class Word2VecDataset(_SplittableDataset):
     """Word2Vec数据集"""
 
-    def __init__(self, values: Sequence[ndarray], labels: ndarray):
+    def __init__(self, values: Tensor, labels: ndarray):
         """
         :param values: 词向量
         :param labels: 标签
         """
-        tools.TypeCheck(Sequence)(values)
-        tools.check_ndarray(*values, extra_checks=[
-            (lambda x: x.ndim == 1, ValueError('values的元素的维度必须为1')),
-            (lambda x: not x.setflags(write=False), NotImplementedError('ndarray应该有setflags方法，请检查numpy版本'))
-        ])
+        tools.TypeCheck(Tensor)(values)
         tools.check_ndarray(labels, extra_checks=[
             (lambda x: x.dtype == bool, ValueError('labels的数据类型必须为bool')),
             (lambda x: x.ndim == 1, ValueError('labels的维度必须为1')),
-            (lambda x: x.shape[0] == len(values), ValueError('values的长度和labels的个数必须相等'))
+            # (lambda x: x.shape[0] == len(values), ValueError('values的长度和labels的个数必须相等'))
         ])
-        self.__values: Sequence = values
-        self.__labels: ndarray = labels
+        self.__values = values
+        self.__labels = labels
         self.__labels.setflags(write=False)
 
     def __len__(self):
@@ -174,7 +172,7 @@ class Word2VecDataset(_SplittableDataset):
         return self.__values[item], self.__labels[item]
 
     @property
-    def values(self) -> Sequence[ndarray]:
+    def values(self) -> Tensor:
         """词向量"""
         return self.__values
 
@@ -186,9 +184,8 @@ class Word2VecDataset(_SplittableDataset):
     def get_subset(self, *index: int) -> 'Word2VecDataset':
         """获取数据集中的某一子集"""
         subset = self._create_and_init_subset_with_data(
-            *index, _Word2VecDataset__values=self.__values, _Word2VecDataset__labels=self.__labels
+            *index, _Word2VecDataset__values=(lambda x: stack(tuple(x)), self.__values),
+            _Word2VecDataset__labels=(lambda x: array(tuple(x)), self.__labels)
         )
-        for value in subset.values:
-            value.setflags(write=False)
         subset.labels.setflags(write=False)
         return subset

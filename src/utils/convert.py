@@ -3,6 +3,7 @@ import time
 import logging
 import numpy as np
 from typing import Callable
+from torch import stack, Tensor
 from scipy.sparse import csr_matrix
 from torch.utils.data import Dataset
 from multiprocessing.pool import Pool
@@ -146,19 +147,15 @@ class Converter:
         self.__word2vec_model = Word2Vec(**kwargs)
         sentence_vectors = []
         for sentence in kwargs["sentences"]:
-            sentence_vector = np.zeros(self.__word2vec_model.vector_size, dtype=self.__word2vec_model.wv.vectors.dtype)
-            word_count = 0
+            sentence_vector = []
             for word in sentence:
                 if word in self.__word2vec_model.wv.key_to_index:
-                    sentence_vector += self.__word2vec_model.wv[word]
-                    word_count += 1
-            if word_count > 0:
-                sentence_vector /= word_count
-            sentence_vectors.append(sentence_vector)
-        self.__word2vec_dataset = Word2VecDataset(sentence_vectors, np.array(self.__labels, dtype=bool))
+                    sentence_vector.append(Tensor(self.__word2vec_model.wv[word]))
+            sentence_vectors.append(stack(sentence_vector))
+        self.__word2vec_dataset = Word2VecDataset(stack(sentence_vectors), np.array(self.__labels, dtype=bool))
         return self.__word2vec_dataset
 
-    def __to_svm(self, save_path: str, generate_func: Callable, values: csr_matrix | list[np.ndarray]) -> str:
+    def __to_svm(self, save_path: str, generate_func: Callable, values: csr_matrix | Tensor) -> str:
         """保存为svm格式"""
         tools.check_str(save_path)
         tools.check_callable(generate_func)
@@ -182,14 +179,16 @@ class Converter:
         return self.__to_svm(save_path, self._tfidf_generate_line, self.tfidf_matrix)
 
     def word2vec_to_svm(self, save_path: str = None) -> str:
-        if save_path is None:
-            save_path = rf'.\svm\data\word2vec_to_svm_output({time.time()}).txt'
-        return self.__to_svm(save_path, self._word2vec_generate_line, self.word2vec_dataset.values)
+        raise NotImplementedError
+        # if save_path is None:
+        #     save_path = rf'.\svm\data\word2vec_to_svm_output({time.time()}).txt'
+        # return self.__to_svm(save_path, self._word2vec_generate_line, self.word2vec_dataset.values)
 
     @staticmethod
     def _tfidf_generate_line(sentiment: bool, row: csr_matrix) -> str:
         return f'{"+" if sentiment else "-"}1 {" ".join([f"{i}:{row[0, i]}" for i in sorted(row.nonzero()[1])])}\n'
 
     @staticmethod
-    def _word2vec_generate_line(sentiment: bool, review: np.ndarray) -> str:
-        return f'{"+" if sentiment else "-"}1 {" ".join([f"{i}:{review[i]}" for i in range(len(review))])}\n'
+    def _word2vec_generate_line(sentiment: bool, review: Tensor) -> str:
+        # return f'{"+" if sentiment else "-"}1 {" ".join([f"{i}:{review[i]}" for i in range(len(review))])}\n'
+        ...

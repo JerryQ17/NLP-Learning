@@ -4,7 +4,7 @@ from torch import nn
 from src.utils import tools
 
 
-class LSTMModel(nn.Module):
+class TextClassifier(nn.Module):
     def __init__(
             self,
             input_size: int, hidden_size: int, num_layers: int,
@@ -28,9 +28,9 @@ class LSTMModel(nn.Module):
         # sigmoid层
         self.__sigmoid = nn.Sigmoid()
 
-    def forward(self, input_tensor: torch.Tensor):
-        lstm_out, _ = self.__lstm(input_tensor)
-        fc_out = self.__fc(lstm_out)
+    def forward(self, input_tensor: torch.Tensor) -> torch.Tensor:
+        lstm_out: torch.Tensor = self.__lstm(input_tensor)[0]
+        fc_out = self.__fc(lstm_out if lstm_out.ndim == 2 else lstm_out[:, -1, :])
         sigmoid_out = self.__sigmoid(fc_out)
         return sigmoid_out
 
