@@ -8,6 +8,7 @@ from types import FrameType
 import matplotlib.pyplot as plt
 from torch.optim import Optimizer
 from torch.return_types import max
+from collections.abc import Iterable
 from torch.utils.data import Dataset, DataLoader
 
 from src.utils import tools
@@ -272,12 +273,15 @@ class Trainer:
             raise RuntimeError(error) from error
 
     @staticmethod
-    def __draw_loss_curve(losses: list[float]):
+    def __draw_loss_curve(**keyed_loss: Iterable[float]):
         plt.figure(figsize=(24, 4))
-        plt.plot(losses, color='blue')
+        color_step = 1 / len(keyed_loss)
+        for i, (key, losses) in enumerate(keyed_loss.items()):
+            plt.plot(losses, label=key, color=(i * color_step, 0.5, 1 - i * color_step))
         plt.xlabel('Epoch')
         plt.ylabel('Loss')
         plt.title('Loss Curve')
+        plt.legend()
         plt.show()
 
     def early_stopping(self, train_dataloader: DataLoader, eval_dataloader: DataLoader, *,
@@ -285,9 +289,10 @@ class Trainer:
         self.__nn_ready_to_train()
         self.__reset_nn_training_state(max_epoch)
 
-        best_eval_loss = float('inf')
         counter = 0
         train_losses = []
+        eval_losses = []
+        best_eval_loss = float('inf')
 
         for epoch in range(max_epoch):
             self.__logger.info(f"Epoch {epoch + 1}")
@@ -300,9 +305,10 @@ class Trainer:
                     texts, labels = self.__transform_tensors(texts, labels)
                     eval_loss += self.__criterion(self.__model(texts), labels).item()
             eval_loss /= len(eval_dataloader)
+            eval_losses.append(eval_loss)
             self.__logger.info(f'eval_loss: {eval_loss}, best_eval_loss: {best_eval_loss}')
             if draw:
-                self.__draw_loss_curve(train_losses)
+                self.__draw_loss_curve(train_loss=train_losses, eval_loss=eval_losses)
             if eval_loss < best_eval_loss:
                 best_eval_loss = eval_loss
                 counter = 0
@@ -341,7 +347,7 @@ class Trainer:
             losses.append(self.__single_train(loader))
             self.__update_nn_training_state(epoch)
             if draw:
-                self.__draw_loss_curve(losses)
+                self.__draw_loss_curve(loss=losses)
         return self
 
     def train_from_state(self, path: str, *,
