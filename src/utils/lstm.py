@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from src.utils import tools
+from src.utils import typecheck
 
 
 class TextClassifier(nn.Module):
@@ -13,18 +13,18 @@ class TextClassifier(nn.Module):
         if output_size is None and fc is None:
             raise ValueError('output_size和fc不能同时为None')
         super().__init__()
-        self.__input_size = tools.check_pint(input_size)
-        self.__hidden_size = tools.check_pint(hidden_size)
-        self.__num_layers = tools.check_pint(num_layers)
-        self.__output_size = tools.check_pint(output_size, include_none=True)
+        self.__input_size = typecheck.check_pint(input_size)
+        self.__hidden_size = typecheck.check_pint(hidden_size)
+        self.__num_layers = typecheck.check_pint(num_layers)
+        self.__output_size = typecheck.check_pint(output_size, include_none=True)
         # LSTM层
         self.__lstm = nn.LSTM(
             input_size=self.__input_size, hidden_size=self.__hidden_size,
-            num_layers=self.__num_layers, dropout=tools.check_nnfloat(dropout, auto_convert=True),
+            num_layers=self.__num_layers, dropout=typecheck.check_nnfloat(dropout, auto_convert=True),
             batch_first=True
         )
         # 全连接层
-        self.__fc = nn.Linear(hidden_size, output_size) if fc is None else tools.TypeCheck(nn.Module)(fc)
+        self.__fc = nn.Linear(hidden_size, output_size) if fc is None else typecheck.TypeCheck(nn.Module)(fc)
         # sigmoid层
         self.__sigmoid = nn.Sigmoid()
 
@@ -66,7 +66,7 @@ class TextClassifier(nn.Module):
 class SelfAttention(nn.Module):
     def __init__(self, hidden_size: int):
         super().__init__()
-        self.__hidden_size = tools.check_pint(hidden_size)
+        self.__hidden_size = typecheck.check_pint(hidden_size)
         self.__query = nn.Linear(self.__hidden_size, self.__hidden_size)
         self.__key = nn.Linear(self.__hidden_size, self.__hidden_size)
         self.__value = nn.Linear(self.__hidden_size, self.__hidden_size)

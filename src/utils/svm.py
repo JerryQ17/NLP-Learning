@@ -12,7 +12,7 @@ from libsvm.svmutil import (
     svm_read_problem
 )
 
-from src.utils import tools
+from src.utils import typecheck
 from src.utils.models import GridResult, SVMTrainingState
 
 
@@ -72,7 +72,7 @@ class SVM:
 
     @logger.setter
     def logger(self, logger):
-        self.__logger = tools.TypeCheck(logging.Logger)(logger, default=logging.getLogger(__name__))
+        self.__logger = typecheck.TypeCheck(logging.Logger)(logger, default=logging.getLogger(__name__))
 
     @property
     def model(self):
@@ -84,7 +84,7 @@ class SVM:
 
     @problem_path.setter
     def problem_path(self, path: str):
-        self.__problem_path = tools.check_file(path, include_none=True)
+        self.__problem_path = typecheck.check_file(path, include_none=True)
 
     @property
     def model_savepath(self) -> str:
@@ -92,7 +92,7 @@ class SVM:
 
     @model_savepath.setter
     def model_savepath(self, path: str):
-        self.__model_savepath = tools.check_str(path, include_none=True)
+        self.__model_savepath = typecheck.check_str(path, include_none=True)
 
     @property
     def state(self):
@@ -101,9 +101,9 @@ class SVM:
     def load(self, model: svm_model = None, model_path: str = None) -> 'SVM':
         """加载模型，model和model_path必须至少指定一个"""
         if model is not None:
-            self.__model = tools.TypeCheck(svm_model)(model)
+            self.__model = typecheck.TypeCheck(svm_model)(model)
         elif model_path is not None:
-            self.__model = svm_load_model(tools.check_file(model_path))
+            self.__model = svm_load_model(typecheck.check_file(model_path))
         else:
             raise ValueError('model和model_path必须至少指定一个')
         return self
@@ -115,7 +115,7 @@ class SVM:
                 raise ValueError('未指定模型保存路径')
             path = self.__model_savepath
         else:
-            path = tools.check_str(path)
+            path = typecheck.check_str(path)
         svm_save_model(path, self.__model)
         return os.path.abspath(path)
 
@@ -145,8 +145,8 @@ class SVM:
         :param n_fold: n-fold cross validation mode
         :return: 训练好的模型
         """
-        tools.check_file(problem_path, include_none=True)
-        tools.TypeCheck(int)(shrinking, probability_estimates, include_none=True,
+        typecheck.check_file(problem_path, include_none=True)
+        typecheck.TypeCheck(int)(shrinking, probability_estimates, include_none=True,
                              extra_checks=[(lambda x: x in (0, 1), ValueError('shrinking必须是0或1'))])
         # 生成参数字符串
         kwargs = locals()
@@ -194,7 +194,7 @@ class SVM:
         # 检查参数
         if self.__model is None:
             if model is None:
-                model = svm_load_model(tools.check_file(model_path))
+                model = svm_load_model(typecheck.check_file(model_path))
             else:
                 if model_path is not None and os.path.isfile(model_path):
                     self.__logger.warning('因为model和model_path同时存在，model_path参数已被忽略')
@@ -204,7 +204,7 @@ class SVM:
             if model_path is not None:
                 self.__logger.warning('因为已加载模型，model_path参数已被忽略')
             model = self.__model
-        tools.TypeCheck(int)(probability_estimates, include_none=True,
+        typecheck.TypeCheck(int)(probability_estimates, include_none=True,
                              extra_checks=[(lambda i: i in (0, 1), ValueError('probability_estimates必须是0或1'))])
 
         # 生成参数字符串
@@ -220,8 +220,8 @@ class SVM:
         return tuple(start * step ** i for i in range(int(log(end / start, step)) + 1))
 
     def __draw_result(self, img_name: str = None, dpi: int = None):
-        tools.check_str(img_name, default=r'.\svm\data\grid_result.png')
-        tools.TypeCheck(int)(dpi, default=1000)
+        typecheck.check_str(img_name, default=r'.\svm\data\grid_result.png')
+        typecheck.TypeCheck(int)(dpi, default=1000)
         self.__logger.info('drawing result...')
         # 数据处理
         c_values = [log(result.c, 10) for result in self.__state.results]
@@ -277,7 +277,7 @@ class SVM:
                 raise ValueError('problem_path参数不能为None')
             problem_path = self.__problem_path
         else:
-            tools.check_file(problem_path)
+            typecheck.check_file(problem_path)
 
         self.__state = SVMTrainingState()
         c_range = self.__mul_range(c_min, c_max, c_step)
@@ -310,7 +310,7 @@ class SVM:
             self, state_path: str, problem_path: str = None, n_fold: int = 5,
             detailed: bool = False, img_name: str = r'.\svm\data\grid_result.png', dpi: int = 1000
     ) -> tuple[GridResult] | GridResult:
-        tools.check_file(state_path)
+        typecheck.check_file(state_path)
         try:
             self.__state = SVMTrainingState(**load(state_path))
         except Exception as error:
