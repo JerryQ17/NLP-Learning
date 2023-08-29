@@ -11,7 +11,7 @@ from torch.return_types import max
 from collections.abc import Iterable
 from torch.utils.data import Dataset, DataLoader
 
-from src.utils import tools
+from src.utils import typecheck
 from src.utils.svm import SVM
 from src.utils.models import NNTrainingState
 
@@ -40,7 +40,7 @@ class Trainer:
     @classmethod
     def add_autosave_signals(cls, *autosave_signals: signal.Signals):
         autosave_signals = set(autosave_signals)
-        tools.TypeCheck(signal.Signals)(*autosave_signals)
+        typecheck.TypeCheck(signal.Signals)(*autosave_signals)
         for sig in autosave_signals - cls.__autosave_signals:
             signal.signal(sig, cls._auto_save_handler)
             cls.__autosave_signals.add(sig)
@@ -48,7 +48,7 @@ class Trainer:
     @classmethod
     def remove_autosave_signals(cls, *autosave_signals: signal.Signals):
         autosave_signals = set(autosave_signals)
-        tools.TypeCheck(signal.Signals)(*autosave_signals)
+        typecheck.TypeCheck(signal.Signals)(*autosave_signals)
         for sig in autosave_signals & cls.__autosave_signals:
             signal.signal(sig, signal.SIG_DFL)
             cls.__autosave_signals.remove(sig)
@@ -124,7 +124,7 @@ class Trainer:
 
     @logger.setter
     def logger(self, logger):
-        self.__logger = tools.TypeCheck(logging.Logger)(logger, default=logging.getLogger(__name__))
+        self.__logger = typecheck.TypeCheck(logging.Logger)(logger, default=logging.getLogger(__name__))
 
     @property
     def autosave(self):
@@ -140,7 +140,7 @@ class Trainer:
 
     @autosave_dir.setter
     def autosave_dir(self, autosave_dir: str):
-        self.__autosave_dir = tools.check_dir(autosave_dir)
+        self.__autosave_dir = typecheck.check_dir(autosave_dir)
 
     @property
     def tfidf_dataset(self):
@@ -148,7 +148,7 @@ class Trainer:
 
     @tfidf_dataset.setter
     def tfidf_dataset(self, tfidf_dataset: Dataset):
-        self.__tfidf_dataset = tools.check_dataset(tfidf_dataset, include_none=True)
+        self.__tfidf_dataset = typecheck.check_dataset(tfidf_dataset, include_none=True)
 
     @property
     def word2vec_dataset(self):
@@ -156,7 +156,7 @@ class Trainer:
 
     @word2vec_dataset.setter
     def word2vec_dataset(self, word2vec_dataset: Dataset):
-        self.__word2vec_dataset = tools.check_dataset(word2vec_dataset, include_none=True)
+        self.__word2vec_dataset = typecheck.check_dataset(word2vec_dataset, include_none=True)
 
     @property
     def svm_train_path(self):
@@ -164,7 +164,7 @@ class Trainer:
 
     @svm_train_path.setter
     def svm_train_path(self, svm_train_path: str):
-        self.__svm_train_path = tools.check_file(svm_train_path, include_none=True)
+        self.__svm_train_path = typecheck.check_file(svm_train_path, include_none=True)
         if self.__svm_train_path is not None:
             self.__svm.problem_path = svm_train_path
 
@@ -174,7 +174,7 @@ class Trainer:
 
     @svm_model_path.setter
     def svm_model_path(self, svm_model_path: str):
-        self.__svm_model_path = tools.check_file(svm_model_path, include_none=True)
+        self.__svm_model_path = typecheck.check_file(svm_model_path, include_none=True)
         if self.__svm_model_path:
             self.__svm.load(model_path=svm_model_path)
 
@@ -188,7 +188,7 @@ class Trainer:
 
     @model.setter
     def model(self, model: nn.Module):
-        self.__model = tools.TypeCheck(nn.Module)(model, include_none=True)
+        self.__model = typecheck.TypeCheck(nn.Module)(model, include_none=True)
         if hasattr(self, f'_{self.__class__.__name__}__device') and self.__model and self.__device:
             self.__model.to(self.__device)
 
@@ -198,7 +198,7 @@ class Trainer:
 
     @optimizer.setter
     def optimizer(self, optimizer: Optimizer):
-        self.__optimizer = tools.TypeCheck(Optimizer)(optimizer, include_none=True)
+        self.__optimizer = typecheck.TypeCheck(Optimizer)(optimizer, include_none=True)
 
     @property
     def criterion(self):
@@ -206,7 +206,7 @@ class Trainer:
 
     @criterion.setter
     def criterion(self, criterion: nn.Module):
-        self.__criterion = tools.TypeCheck(nn.Module)(criterion, include_none=True)
+        self.__criterion = typecheck.TypeCheck(nn.Module)(criterion, include_none=True)
 
     @property
     def device(self):
@@ -217,7 +217,7 @@ class Trainer:
         if isinstance(device, list) and len(device) == 2 and isinstance(device[0], str) and isinstance(device[1], int):
             self.__device = torch.device(*device)
         else:
-            self.__device = torch.device(tools.TypeCheck(torch.device, str, int)(
+            self.__device = torch.device(typecheck.TypeCheck(torch.device, str, int)(
                 device,
                 default=torch.device('cuda') if torch.cuda.is_available() else
                 torch.device('mps') if torch.backends.mps.is_available() else
@@ -325,7 +325,7 @@ class Trainer:
         # 检查内部属性
         self.__nn_ready_to_train()
         # 检查参数
-        self.__reset_nn_training_state(tools.check_pint(epochs))
+        self.__reset_nn_training_state(typecheck.check_pint(epochs))
         tfidf_mode, word2vec_mode = bool(tfidf_mode), bool(word2vec_mode)
         if tfidf_mode == word2vec_mode:
             raise ValueError('svm_mode和word2vec_mode不能同时为True或同时为False')
@@ -353,7 +353,7 @@ class Trainer:
     def train_from_state(self, path: str, *,
                          tfidf_mode: bool = False, word2vec_mode: bool = False,
                          draw: bool = False, **dataloader_kwargs) -> 'Trainer':
-        tools.check_file(path)
+        typecheck.check_file(path)
         self.__nn_ready_to_train()
         self.__nn_training_state = NNTrainingState(**torch.load(path))
         self.__model.load_state_dict(self.__nn_training_state.model_state_dict)
@@ -363,7 +363,7 @@ class Trainer:
 
     def evaluate(self, loader: DataLoader) -> float:
         self.__nn_ready_to_use()
-        tools.TypeCheck(DataLoader)(loader)
+        typecheck.TypeCheck(DataLoader)(loader)
         self.__model.to(self.__device)
         self.__model.eval()
         with torch.no_grad():
@@ -381,7 +381,7 @@ class Trainer:
         self.__nn_ready_to_use()
         if self.__model is None:
             raise RuntimeError('请先设置model')
-        tools.TypeCheck(torch.Tensor)(texts)
+        typecheck.TypeCheck(torch.Tensor)(texts)
 
         self.__model.to(self.__device)
         self.__model.eval()
@@ -392,10 +392,10 @@ class Trainer:
 
     def save(self, path: str = r'.\lstm\model\lstm.pth') -> str:
         self.__nn_ready_to_use()
-        torch.save(self.__model.state_dict(), tools.check_str(path))
+        torch.save(self.__model.state_dict(), typecheck.check_str(path))
         return os.path.abspath(path)
 
     def load(self, path: str):
         self.__nn_ready_to_use()
-        self.__model.load_state_dict(torch.load(tools.check_file(path)))
+        self.__model.load_state_dict(torch.load(typecheck.check_file(path)))
         return self
