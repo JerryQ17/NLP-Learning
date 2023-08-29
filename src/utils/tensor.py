@@ -71,7 +71,7 @@ def pad_tensor_with_tensor(tensor: Tensor, pad_tensor: Tensor, length: int, dim:
     Args:
         tensor: 被填充的张量
         pad_tensor: 用于填充的张量
-        length: 填充后的长度
+        length: 需填充的长度
         dim: 可选，填充的维度
 
     Returns:
