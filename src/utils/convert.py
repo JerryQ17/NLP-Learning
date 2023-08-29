@@ -2,29 +2,36 @@ import os
 import time
 import logging
 import numpy as np
+from enum import Enum
 from typing import Callable
-from torch import stack, Tensor
 from scipy.sparse import csr_matrix
 from torch.utils.data import Dataset
+from collections.abc import Generator
 from multiprocessing.pool import Pool
 from gensim.models.word2vec import Word2Vec
+from torch import stack, Tensor, as_tensor
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from src.utils import tools
-from src.utils.dataset import TfIdfDataset, Word2VecDataset
+from src.utils import typecheck
+from src.utils.tensor import random_tensors_outside_existed_tensors
+from src.utils.dataset import IMDBDataset, TfIdfDataset, Word2VecDataset
+
+
+class UniqueWords(str, Enum):
+    """词汇表中的特殊词，**不保证**这两个字符串不在词汇表中"""
+    PADDING = "<PADDING>"
+    UNKNOWN = "<UNKNOWN>"
 
 
 class Converter:
     """数据转换器"""
 
-    def __init__(self, dataset: Dataset, processes: int = 1, logger: logging.Logger = logging.getLogger(__name__)):
+    def __init__(self, dataset: IMDBDataset, processes: int = 1, logger: logging.Logger = logging.getLogger(__name__)):
         # 日志
         self.__logger: logging.Logger | None = None
         self.logger = logger
         # 数据集
-        self.__reviews: tuple[str] | None = None
-        self.__labels: tuple[bool] | None = None
-        self.__dataset: Dataset | None = None
+        self.__dataset: IMDBDataset | None = None
         self.dataset = dataset
         # 进程数
         self.__processes: int | None = None
@@ -34,7 +41,7 @@ class Converter:
         self.__feature_names: np.ndarray | None = None
         self.__tfidf_dataset: TfIdfDataset | None = None
         # 词向量转换
-        self.__word2vec_model: Word2Vec | None = None
+        self.__word_tensors: dict[str, Tensor] = {}
         self.__word2vec_dataset: Word2VecDataset | None = None
 
     @property
@@ -43,7 +50,7 @@ class Converter:
 
     @logger.setter
     def logger(self, logger):
-        self.__logger = tools.TypeCheck(logging.Logger)(logger, default=logging.getLogger(__name__))
+        self.__logger = typecheck.TypeCheck(logging.Logger)(logger, default=logging.getLogger(__name__))
 
     @property
     def dataset(self):
@@ -51,18 +58,12 @@ class Converter:
 
     @dataset.setter
     def dataset(self, dataset: Dataset):
-        self.__dataset = tools.check_dataset(dataset)
-        reviews = []
-        labels = []
-        # noinspection PyTypeChecker
-        for i in range(len(self.__dataset)):
-            reviews.append(self.__dataset[i][0])
-            labels.append(self.__dataset[i][1])
-        self.__reviews = tuple(reviews)
-        self.__labels = tuple(labels)
+        self.__dataset = typecheck.TypeCheck(IMDBDataset)(dataset)
         self.__tfidf_matrix = None
         self.__feature_names = None
         self.__tfidf_dataset = None
+        self.__word_tensors = {}
+        self.__word2vec_dataset = None
 
     @property
     def processes(self):
@@ -79,16 +80,6 @@ class Converter:
             self.__processes = 1
 
     @property
-    def reviews(self):
-        """获取数据集中的所有评论，元组"""
-        return self.__reviews
-
-    @property
-    def labels(self):
-        """获取数据集中的所有标签，元组"""
-        return self.__labels
-
-    @property
     def tfidf_matrix(self):
         if self.__tfidf_matrix is None:
             self.tfidf()
@@ -101,10 +92,14 @@ class Converter:
         return self.__feature_names
 
     @property
-    def items_generator(self):
-        """获取数据集中的所有数据项，生成器"""
-        # noinspection PyTypeChecker
-        return (self.__dataset[_] for _ in range(len(self.__dataset)))
+    def reviews_generator(self) -> Generator[str, None, None]:
+        """获取数据集中的所有评论，生成器"""
+        return (item[0] for item in self.__dataset.items)
+
+    @property
+    def labels_generator(self) -> Generator[float, None, None]:
+        """获取数据集中的所有标签，生成器"""
+        return (item[1] for item in self.__dataset.items)
 
     @property
     def tfidf_dataset(self):
@@ -112,13 +107,6 @@ class Converter:
         if self.__tfidf_dataset is None:
             return self.tfidf()
         return self.__tfidf_dataset
-
-    @property
-    def word2vec_model(self):
-        """词向量模型"""
-        if self.__word2vec_model is None:
-            self.word2vec()
-        return self.__word2vec_model
 
     @property
     def word2vec_dataset(self):
@@ -132,35 +120,53 @@ class Converter:
         # 实例化TfidfVectorizer对象，并设置定制化选项
         vectorizer = TfidfVectorizer(**kwargs)
         # 对文本数据进行tf-idf转换
-        self.__tfidf_matrix = vectorizer.fit_transform(self.__reviews)
+        self.__tfidf_matrix = vectorizer.fit_transform(self.reviews_generator)
         self.__feature_names = vectorizer.get_feature_names_out()  # 检索词汇表
         self.__feature_names.setflags(write=False)
-        self.__tfidf_dataset = TfIdfDataset(self.__tfidf_matrix, np.array(self.__labels, dtype=bool))
+        self.__tfidf_dataset = TfIdfDataset(self.__tfidf_matrix, Tensor(tuple(self.labels_generator)))
         return self.__tfidf_dataset
 
     def word2vec(self, **kwargs):
         """计算词向量"""
+        # 实例化Word2Vec对象，并设置定制化选项
         if "sentences" not in kwargs:
-            kwargs.update(sentences=[review.split() for review in self.__reviews])
+            kwargs.update(sentences=[review.split() for review in self.reviews_generator])
         if "workers" not in kwargs:
             kwargs.update(workers=self.__processes)
-        self.__word2vec_model = Word2Vec(**kwargs)
-        sentence_vectors = []
+        model = Word2Vec(**kwargs)
+        word_vectors = model.wv
+        del model  # 释放内存
+        # 将词向量转换为张量
+        for word in word_vectors.key_to_index:
+            self.__word_tensors[word] = as_tensor(word_vectors[word])
+        del word_vectors  # 释放内存
+        # 生成padding和unknown张量
+        random_tensors = random_tensors_outside_existed_tensors(*self.__word_tensors.values(), num=2)
+        pad_tensor: Tensor = random_tensors[0]
+        unknown_tensor: Tensor = random_tensors[1]
+        # 将padding和unknown张量加入词向量字典
+        self.__word_tensors[UniqueWords.PADDING] = pad_tensor
+        self.__word_tensors[UniqueWords.UNKNOWN] = unknown_tensor
+        # 将句子转换为张量
+        sentence_tensors = []
         for sentence in kwargs["sentences"]:
-            sentence_vector = []
+            sentence_tensor = []
             for word in sentence:
-                if word in self.__word2vec_model.wv.key_to_index:
-                    sentence_vector.append(Tensor(self.__word2vec_model.wv[word]))
-            sentence_vectors.append(stack(sentence_vector))
-        self.__word2vec_dataset = Word2VecDataset(stack(sentence_vectors), np.array(self.__labels, dtype=bool))
+                if word in self.__word_tensors:
+                    sentence_tensor.append(self.__word_tensors[word])
+                else:
+                    sentence_tensor.append(unknown_tensor)
+            sentence_tensors.append(stack(sentence_tensor))
+        # 生成数据集
+        self.__word2vec_dataset = Word2VecDataset(sentence_tensors, Tensor(tuple(self.labels_generator)), pad_tensor)
         return self.__word2vec_dataset
 
     def __to_svm(self, save_path: str, generate_func: Callable, values: csr_matrix | Tensor) -> str:
         """保存为svm格式"""
-        tools.check_str(save_path)
-        tools.check_callable(generate_func)
+        typecheck.check_str(save_path)
+        typecheck.check_callable(generate_func)
         if self.__processes > 1:
-            args = [(label, value) for label, value in zip(self.__labels, values)]
+            args = [(label, value) for label, value in zip(self.labels_generator, values)]
             with Pool(processes=self.__processes) as pool:
                 results = pool.starmap(generate_func, args)
             with open(save_path, 'w') as file:
@@ -168,7 +174,7 @@ class Converter:
                     file.write(line)
         else:
             with open(save_path, 'w') as file:
-                for label, value in zip(self.__labels, values):
+                for label, value in zip(self.labels_generator, values):
                     file.write(generate_func(label, value))
         return os.path.abspath(save_path)
 
