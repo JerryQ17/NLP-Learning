@@ -285,7 +285,8 @@ class Trainer:
         plt.show()
 
     def early_stopping(self, train_dataloader: DataLoader, eval_dataloader: DataLoader, *,
-                       patience: int = 5, max_epoch: int = 10000, draw: bool = False) -> 'Trainer':
+                       patience: int = 5, max_epoch: int = 10000,
+                       draw: bool = False, img_name: str = 'plot.png') -> 'Trainer':
         self.__nn_ready_to_train()
         self.__reset_nn_training_state(max_epoch)
 
@@ -316,6 +317,8 @@ class Trainer:
                 counter += 1
                 if counter >= patience:
                     self.__logger.info(f'Early stopping at epoch {epoch + 1}')
+                    # 保存图像
+                    plt.savefig(img_name, dpi=2000)
                     break
         return self
 
