@@ -59,15 +59,15 @@ def word2vec_lstm():
     ]
 
     trainer = Trainer(device=torch.device('cuda'), criterion=nn.CrossEntropyLoss())
-    train_dl = DataLoader(train_wv_ds, batch_size=64, shuffle=True, persistent_workers=True)
-    eval_dl = DataLoader(eval_wv_ds, batch_size=64, shuffle=True, persistent_workers=True)
+    train_dl = DataLoader(train_wv_ds, batch_size=64, shuffle=True,num_workers=2, persistent_workers=True)
+    eval_dl = DataLoader(eval_wv_ds, batch_size=64, shuffle=True,num_workers=1, persistent_workers=True)
     _logger.info(f'初始化训练器耗时{time.time() - start}秒')
 
     for i, model in enumerate(model_list):
         trainer.model = model
         trainer.optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-        trainer.early_stopping(train_dl, eval_dl, draw=True, img_name=rf'.\assets\w2v_model{i}.png')
+        trainer.early_stopping(train_dl, eval_dl, draw=True, savepath=rf'.\assets\w2v_model{i}.png')
         _logger.info(f'训练模型{i}耗时{time.time() - start}秒')
 
         savepath = trainer.save(fr".\lstm\model\w2v_model{i}.pth")

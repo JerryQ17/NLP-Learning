@@ -273,7 +273,7 @@ class Trainer:
             raise RuntimeError(error) from error
 
     @staticmethod
-    def __draw_loss_curve(**keyed_loss: Iterable[float]):
+    def __draw_loss_curve(savepath: str = None, /, **keyed_loss: Iterable[float]):
         plt.figure(figsize=(24, 4))
         color_step = 1 / len(keyed_loss)
         for i, (key, losses) in enumerate(keyed_loss.items()):
@@ -282,11 +282,13 @@ class Trainer:
         plt.ylabel('Loss')
         plt.title('Loss Curve')
         plt.legend()
+        if savepath is not None:
+            plt.savefig(savepath, dpi=2000)
         plt.show()
 
     def early_stopping(self, train_dataloader: DataLoader, eval_dataloader: DataLoader, *,
                        patience: int = 5, max_epoch: int = 10000,
-                       draw: bool = False, img_name: str = 'plot.png') -> 'Trainer':
+                       draw: bool = False, savepath: str = None) -> 'Trainer':
         self.__nn_ready_to_train()
         self.__reset_nn_training_state(max_epoch)
 
@@ -309,7 +311,7 @@ class Trainer:
             eval_losses.append(eval_loss)
             self.__logger.info(f'eval_loss: {eval_loss}, best_eval_loss: {best_eval_loss}')
             if draw:
-                self.__draw_loss_curve(train_loss=train_losses, eval_loss=eval_losses)
+                self.__draw_loss_curve(savepath, train_loss=train_losses, eval_loss=eval_losses)
             if eval_loss < best_eval_loss:
                 best_eval_loss = eval_loss
                 counter = 0
@@ -317,8 +319,6 @@ class Trainer:
                 counter += 1
                 if counter >= patience:
                     self.__logger.info(f'Early stopping at epoch {epoch + 1}')
-                    # 保存图像
-                    plt.savefig(img_name, dpi=2000)
                     break
         return self
 
