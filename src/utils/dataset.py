@@ -2,7 +2,7 @@ import os
 import csv
 from torch import Tensor
 from random import sample
-from numpy import ndarray
+from numpy import array, ndarray
 from abc import ABC, abstractmethod
 from scipy.sparse import csr_matrix
 from torch.utils.data import Dataset
@@ -26,14 +26,23 @@ class _SplittableDataset(Dataset, Sized, ABC):
         self._indexs: tuple[int] | None = indexs
         self._parent: _SplittableDataset | None = parent
 
-    def _mapping_parent_data(self, data: __Gettable, index: int):
-        return data[index if self._is_root else self._indexs[index]]
+    def _mapping_index(self, index: int):
+        """将索引映射到根集"""
+        return index if self._is_root else self._parent._mapping_index(self._indexs[index])
+
+    def _mapping_data(self, data: str):
+        """将数据映射到根集"""
+        return getattr(self, data) if self._is_root else self._parent._mapping_data(data)
+
+    def _get(self, data: str, index: int):
+        return self._mapping_data(data)[self._mapping_index(index)]
 
     def _create_and_init_subset_with_data(self: __T,
                                           *index: int,
                                           **data: tuple[Callable[[Generator], __Gettable], __Gettable]) -> __T:
         """创建一个子集，其数据与当前数据集"""
         ds = object.__new__(self.__class__)
+        _SplittableDataset.__init__(ds, is_root=False, indexs=index, parent=self)
         for key, value in data.items():
             setattr(ds, key, value[0](value[1][i] for i in index))
         return ds
@@ -62,18 +71,18 @@ class IMDBDataset(_SplittableDataset):
         :param dataset_pathname: 数据集路径
         """
         super().__init__()
-        self.__items: tuple[tuple[str, float]] | None = None
+        self._items: tuple[tuple[str, float]] | None = None
 
         self.__dataset_pathname: str | None = None
         self.dataset_pathname = dataset_pathname
 
     def __len__(self):
         """获取数据集长度"""
-        return len(self.__items)
+        return len(self._items) if self._is_root else len(self._indexs)
 
-    def __getitem__(self, item):
+    def __getitem__(self, item) -> tuple[str, float]:
         """获取数据集中的某一项"""
-        return self.__items[item]
+        return self._get('_items', item)
 
     @property
     def dataset_pathname(self):
@@ -85,25 +94,26 @@ class IMDBDataset(_SplittableDataset):
         """数据集路径必须存在，且必须是csv文件"""
         if os.path.splitext(typecheck.check_file(dataset_pathname))[1] != '.csv':
             raise ValueError('数据集必须是csv文件')
+        self._read()  # 读取数据无异常再改变属性
+        super().__init__()
         self.__dataset_pathname = dataset_pathname
-        self._read()
 
     @property
     def items(self):
         """所有项"""
-        return self.__items
+        return self._items if self._is_root else tuple(self._mapping_data('_items')[i] for i in self._indexs)
 
     def _read(self) -> tuple[tuple[str, float]]:
         """读取数据"""
         with open(self.__dataset_pathname, encoding='utf-8-sig', errors='ignore') as file:
             csv_reader = csv.reader(file)
             next(csv_reader)  # 跳过标题行
-            self.__items = tuple((row[0], float(row[1] == "positive")) for row in csv_reader)
-        return self.__items
+            self._items = tuple((row[0], float(row[1] == "positive")) for row in csv_reader)
+        return self._items
 
     def get_subset(self, *index: int) -> 'IMDBDataset':
         """获取数据集中的某一子集"""
-        subset = self._create_and_init_subset_with_data(*index, _IMDBDataset__items=(tuple, self.__items))
+        subset = self._create_and_init_subset_with_data(*index)
         subset.__dataset_pathname = self.__dataset_pathname
         return subset
 
@@ -117,40 +127,35 @@ class TfIdfDataset(_SplittableDataset):
         :param labels: 标签
         """
         super().__init__()
-        typecheck.TypeCheck(csr_matrix)(values,
-                                        extra_checks=[(lambda x: x.ndim == 2, ValueError('values的维度必须为2'))])
+        typecheck.TypeCheck(csr_matrix)(values, extra_checks=[
+            (lambda x: x.ndim == 2, ValueError('values的维度必须为2'))
+        ])
         typecheck.TypeCheck(Tensor)(labels, extra_checks=[
             (lambda x: x.ndim == 1, ValueError('labels的维度必须为1')),
             (lambda x: len(x) == values.shape[0], ValueError('values的列数和labels的个数必须相等'))
         ])
-        self.__values = values
-        self.__labels = labels
+        self._values = values
+        self._labels = labels
 
     def __len__(self):
-        return len(self.__labels)
+        return len(self._labels) if self._is_root else len(self._indexs)
 
     def __getitem__(self, item) -> tuple[ndarray, float]:
-        values = self.__values[item].toarray()[0]
-        values.setflags(write=False)
-        return values, self.__labels[item]
+        return self._get('_values', item).toarray()[0], self._get('_labels', item)
 
     @property
     def values(self) -> csr_matrix:
         """TF-IDF值"""
-        return self.__values
+        return self._values if self._is_root else self._mapping_data('_values')[array(self._indexs)]
 
     @property
     def labels(self) -> Tensor:
         """标签"""
-        return self.__labels
+        return self._labels if self._is_root else self._mapping_data('_labels')[Tensor(self._indexs)]
 
     def get_subset(self, *index: int) -> 'TfIdfDataset':
         """获取数据集中的某一子集"""
-        subset = self._create_and_init_subset_with_data(
-            *index,
-            _TfIdfDataset__values=(lambda x: x, self.__values),
-            _TfIdfDataset__labels=(lambda x: Tensor(tuple(x)), self.__labels)
-        )
+        subset = self._create_and_init_subset_with_data(*index)
         return subset
 
 
@@ -165,40 +170,37 @@ class Word2VecDataset(_SplittableDataset):
 
     def __init__(self, values: Sequence[Tensor], labels: Tensor, pad_tensor: Tensor):
         super().__init__()
+        typecheck.TypeCheck(Sequence)(values)
         typecheck.TypeCheck(Tensor)(*values, extra_checks=[(lambda x: x.ndim == 2, ValueError('元素必须为二维张量'))])
         typecheck.TypeCheck(Tensor)(labels, extra_checks=[
             (lambda x: x.ndim == 1, ValueError('labels必须为一维张量')),
             (lambda x: len(x) == len(values), ValueError('values和labels的长度必须相等'))
         ])
-        self.__values = values
-        self.__labels = labels
+        self._values = values
+        self._labels = labels
         self.__max_len = max(len(value) for value in values)
         self.__pad_tensor = pad_tensor
 
     def __len__(self):
-        return self.__labels.shape[0]
+        return len(self._labels) if self._is_root else len(self._indexs)
 
     def __getitem__(self, item) -> tuple[Tensor, Tensor]:
-        value = self.__values[item]
-        return pad_tensor_with_tensor(value, self.__pad_tensor, self.__max_len - len(value)), self.__labels[item]
+        value = self._get('_values', item)
+        return pad_tensor_with_tensor(value, self.__pad_tensor, self.__max_len - len(value)), self._get('_labels', item)
 
     @property
     def values(self) -> Sequence[Tensor]:
         """词向量"""
-        return self.__values
+        return self._values if self._is_root else tuple(self._mapping_data('_values')[i] for i in self._indexs)
 
     @property
     def labels(self) -> Tensor:
         """标签"""
-        return self.__labels
+        return self._labels if self._is_root else self._mapping_data('_labels')[Tensor(self._indexs)]
 
     def get_subset(self, *index: int) -> 'Word2VecDataset':
         """获取数据集中的某一子集"""
-        # noinspection PyTypeChecker
-        subset = self._create_and_init_subset_with_data(
-            *index, _Word2VecDataset__values=(tuple, self.__values),
-            _Word2VecDataset__labels=(lambda x: Tensor(tuple(x)), self.__labels)
-        )
-        subset.__max_len = max(len(value) for value in subset.__values)
+        subset = self._create_and_init_subset_with_data(*index)
+        subset.__max_len = self.__max_len
         subset.__pad_tensor = self.__pad_tensor
         return subset
