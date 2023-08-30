@@ -10,7 +10,6 @@ from typing import TypeVar, Protocol, runtime_checkable
 from collections.abc import Sized, Callable, Generator, Sequence
 
 from src.utils import typecheck
-from src.utils.tensor import pad_tensor_with_tensor
 
 
 class _SplittableDataset(Dataset, Sized, ABC):
@@ -94,9 +93,9 @@ class IMDBDataset(_SplittableDataset):
         """数据集路径必须存在，且必须是csv文件"""
         if os.path.splitext(typecheck.check_file(dataset_pathname))[1] != '.csv':
             raise ValueError('数据集必须是csv文件')
+        self.__dataset_pathname = dataset_pathname
         self._read()  # 读取数据无异常再改变属性
         super().__init__()
-        self.__dataset_pathname = dataset_pathname
 
     @property
     def items(self):
@@ -171,7 +170,6 @@ class Word2VecDataset(_SplittableDataset):
     def __init__(self, values: Sequence[Tensor], labels: Tensor, pad_tensor: Tensor):
         super().__init__()
         typecheck.TypeCheck(Sequence)(values)
-        typecheck.TypeCheck(Tensor)(*values, extra_checks=[(lambda x: x.ndim == 2, ValueError('元素必须为二维张量'))])
         typecheck.TypeCheck(Tensor)(labels, extra_checks=[
             (lambda x: x.ndim == 1, ValueError('labels必须为一维张量')),
             (lambda x: len(x) == len(values), ValueError('values和labels的长度必须相等'))
@@ -185,8 +183,7 @@ class Word2VecDataset(_SplittableDataset):
         return len(self._labels) if self._is_root else len(self._indexs)
 
     def __getitem__(self, item) -> tuple[Tensor, Tensor]:
-        value = self._get('_values', item)
-        return pad_tensor_with_tensor(value, self.__pad_tensor, self.__max_len - len(value)), self._get('_labels', item)
+        return self._get('_values', item), self._get('_labels', item)
 
     @property
     def values(self) -> Sequence[Tensor]:

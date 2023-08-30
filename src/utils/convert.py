@@ -7,10 +7,10 @@ from enum import Enum
 from typing import Callable
 from scipy.sparse import csr_matrix
 from torch.utils.data import Dataset
-from collections.abc import Generator
 from multiprocessing.pool import Pool
 from gensim.models.word2vec import Word2Vec
 from torch import stack, Tensor, from_numpy
+from collections.abc import Generator, Sequence
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from src.utils import typecheck
@@ -156,18 +156,11 @@ class Converter:
         # 将padding和unknown张量加入词向量字典
         self.__word_tensors[UniqueWords.PADDING] = pad_tensor
         self.__word_tensors[UniqueWords.UNKNOWN] = unknown_tensor
-        # 将句子转换为张量
-        sentence_tensors = []
-        for sentence in kwargs["sentences"]:
-            sentence_tensor = []
-            for word in sentence:
-                if word in self.__word_tensors:
-                    sentence_tensor.append(self.__word_tensors[word])
-                else:
-                    sentence_tensor.append(unknown_tensor)
-            sentence_tensors.append(stack(sentence_tensor))
         # 生成数据集
-        self.__word2vec_dataset = Word2VecDataset(sentence_tensors, Tensor(tuple(self.labels_generator)), pad_tensor)
+        self.__word2vec_dataset = Word2VecDataset(
+            Word2VecSequence(self.__word_tensors, self.__reviews_cut),
+            Tensor(tuple(self.labels_generator)), pad_tensor
+        )
         return self.__word2vec_dataset
 
     def __to_svm(self, save_path: str, generate_func: Callable, values: csr_matrix | Tensor) -> str:
@@ -207,3 +200,27 @@ class Converter:
     def _word2vec_generate_line(sentiment: bool, review: Tensor) -> str:
         # return f'{"+" if sentiment else "-"}1 {" ".join([f"{i}:{review[i]}" for i in range(len(review))])}\n'
         ...
+
+
+class Word2VecSequence(Sequence[Tensor]):
+    """词向量序列"""
+
+    def __init__(self, word_tensor: dict[str, Tensor], cut_sentences: tuple[tuple[str]]):
+        self.__word_tensors = word_tensor
+        self.__cut_sentences = cut_sentences
+        self.__max_len = max(len(s) for s in self.__cut_sentences)
+
+    def __len__(self):
+        return len(self.__cut_sentences)
+
+    def __getitem__(self, item):
+        sentence_tensor = []
+        sentence = self.__cut_sentences[item]
+        for word in sentence:
+            if word in self.__word_tensors:
+                sentence_tensor.append(self.__word_tensors[word])
+            else:
+                sentence_tensor.append(self.__word_tensors[UniqueWords.UNKNOWN])
+        if (lack := self.__max_len - len(sentence_tensor)) > 0:
+            sentence_tensor += [self.__word_tensors[UniqueWords.PADDING]] * lack
+        return stack(sentence_tensor)
