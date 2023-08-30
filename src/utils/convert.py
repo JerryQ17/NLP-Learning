@@ -1,4 +1,5 @@
 import os
+import nltk
 import time
 import logging
 import numpy as np
@@ -9,7 +10,7 @@ from torch.utils.data import Dataset
 from collections.abc import Generator
 from multiprocessing.pool import Pool
 from gensim.models.word2vec import Word2Vec
-from torch import stack, Tensor, as_tensor
+from torch import stack, Tensor, from_numpy
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from src.utils import typecheck
@@ -33,6 +34,7 @@ class Converter:
         # 数据集
         self.__dataset: IMDBDataset | None = None
         self.dataset = dataset
+        self.__reviews_cut: tuple[tuple[str]] | None = None
         # 进程数
         self.__processes: int | None = None
         self.processes = processes
@@ -97,6 +99,13 @@ class Converter:
         return (item[0] for item in self.__dataset.items)
 
     @property
+    def reviews_cut(self):
+        """分词后的评论"""
+        nltk.download('punkt')
+        self.__reviews_cut = tuple(tuple(nltk.word_tokenize(review)) for review in self.reviews_generator)
+        return self.__reviews_cut
+
+    @property
     def labels_generator(self) -> Generator[float, None, None]:
         """获取数据集中的所有标签，生成器"""
         return (item[1] for item in self.__dataset.items)
@@ -130,7 +139,7 @@ class Converter:
         """计算词向量"""
         # 实例化Word2Vec对象，并设置定制化选项
         if "sentences" not in kwargs:
-            kwargs.update(sentences=[review.split() for review in self.reviews_generator])
+            kwargs.update(sentences=self.reviews_cut)
         if "workers" not in kwargs:
             kwargs.update(workers=self.__processes)
         model = Word2Vec(**kwargs)
@@ -138,7 +147,7 @@ class Converter:
         del model  # 释放内存
         # 将词向量转换为张量
         for word in word_vectors.key_to_index:
-            self.__word_tensors[word] = as_tensor(word_vectors[word])
+            self.__word_tensors[word] = from_numpy(word_vectors[word])
         del word_vectors  # 释放内存
         # 生成padding和unknown张量
         random_tensors = random_tensors_outside_existed_tensors(*self.__word_tensors.values(), num=2)

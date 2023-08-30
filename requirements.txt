@@ -5,3 +5,4 @@ scikit-learn
 libsvm-official
 matplotlib
 gensim
+nltk
