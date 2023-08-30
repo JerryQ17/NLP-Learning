@@ -16,3 +16,4 @@ if __name__ == "__main__":
 
     tfidf_svm()
     tfidf_lstm()
+    word2vec_lstm()
