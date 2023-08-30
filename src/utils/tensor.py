@@ -62,19 +62,3 @@ def random_tensors_outside_existed_tensors(
     if num == 1:
         return return_tensors[0]
     return torch.stack(return_tensors)
-
-
-def pad_tensor_with_tensor(tensor: Tensor, pad_tensor: Tensor, length: int, dim: int = 0) -> Tensor:
-    """
-    使用指定张量填充张量
-
-    Args:
-        tensor: 被填充的张量
-        pad_tensor: 用于填充的张量
-        length: 需填充的长度
-        dim: 可选，填充的维度
-
-    Returns:
-        填充后的张量
-    """
-    return torch.cat([tensor, pad_tensor.repeat(length, 1)], dim=dim)
