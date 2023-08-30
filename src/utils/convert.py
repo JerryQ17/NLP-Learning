@@ -10,7 +10,7 @@ from torch.utils.data import Dataset
 from multiprocessing.pool import Pool
 from gensim.models.word2vec import Word2Vec
 from torch import stack, Tensor, from_numpy
-from collections.abc import Generator, Sequence
+from collections.abc import Generator, Sequence, Mapping
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from src.utils import typecheck
@@ -205,7 +205,7 @@ class Converter:
 class Word2VecSequence(Sequence[Tensor]):
     """词向量序列"""
 
-    def __init__(self, word_tensor: dict[str, Tensor], cut_sentences: tuple[tuple[str]]):
+    def __init__(self, word_tensor: Mapping[str, Tensor], cut_sentences: tuple[tuple[str]]):
         self.__word_tensors = word_tensor
         self.__cut_sentences = cut_sentences
         self.__max_len = max(len(s) for s in self.__cut_sentences)
