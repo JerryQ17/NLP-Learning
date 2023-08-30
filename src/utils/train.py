@@ -283,7 +283,7 @@ class Trainer:
         plt.title('Loss Curve')
         plt.legend()
         if savepath is not None:
-            plt.savefig(savepath, dpi=2000)
+            plt.savefig(savepath, dpi=2000, bbox_inches='tight')
         plt.show()
 
     def early_stopping(self, train_dataloader: DataLoader, eval_dataloader: DataLoader, *,
