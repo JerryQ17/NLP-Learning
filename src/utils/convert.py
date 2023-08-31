@@ -213,7 +213,9 @@ class Word2VecSequence(Sequence[Tensor]):
     def __len__(self):
         return len(self.__cut_sentences)
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: int | slice):
+        if isinstance(item, slice):
+            return stack([self[i] for i in range(*item.indices(len(self)))])
         sentence_tensor = []
         sentence = self.__cut_sentences[item]
         for word in sentence:
