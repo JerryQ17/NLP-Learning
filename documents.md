@@ -46,6 +46,8 @@
                 - `enum` [`KernelType`](#enum-KernelType)
                 - `class` [`SVM`](#class-SVM)
             - `module` [`tensor.py`](#module-tensorpy)
+                - `func` [`randn_tensor_within_norm()`](#func-randn_tensor_within_norm())
+                - `func` [`random_tensors_outside_existed_tensors()`](#func-random_tensors_outside_existed_tensors())
             - `module` [`train.py`](#tmodule-rainpy)
                 - `class` [`Trainer`](#class-Trainer)
             - `module` [`typecheck.py`](#module-typecheckpy)
@@ -754,11 +756,13 @@ $$
 
 #### Attributes
 
-|       属性       |                                                                   类型                                                                   |  初始值   |    描述     |
-|:--------------:|:--------------------------------------------------------------------------------------------------------------------------------------:|:------:|:---------:|
-|    `model`     | [`libsvm.svmutil.svm_model`](https://github.com/cjlin1/libsvm/blob/aed66346593ec0e075f38eda10fef0c1fb132692/python/libsvm/svm.py#L352) | `None` |   SVM模型   |
-| `grid_results` |                                             [`list[models.GridResult]`](#class-GridResult)                                             | `None` | 网格搜索的结果列表 |
-
+|       属性       |                             类型                             |            初始值             |        描述        |
+| :--------------: | :----------------------------------------------------------: | :---------------------------: | :----------------: |
+|     `logger`     | [`logging.Logger`](https://docs.python.org/zh-cn/3.10/library/logging.html?highlight=logging%20logger#logging.Logger) | `logging.getLogger(__name__)` |     日志记录器     |
+|     `model`      | [`libsvm.svmutil.svm_model`](https://github.com/cjlin1/libsvm/blob/aed66346593ec0e075f38eda10fef0c1fb132692/python/libsvm/svm.py#L352) |            `None`             |      SVM模型       |
+|  `problem_path`  |                            `str`                             |            `None`             |     训练集路径     |
+| `model_savepath` |                            `str`                             |            `None`             |    模型保存路径    |
+|     `state`      | [`sec.utils.models.SVMTrainingState`](#class-SVMTrainingState) |     `SVMTrainingState()`      | 网格搜索的结果列表 |
 
 #### method \_\_init__()
 
@@ -766,7 +770,11 @@ $$
 
 ##### 输入
 
-`None`
+|       参数       |                             类型                             |            初始值             |     描述     |
+| :--------------: | :----------------------------------------------------------: | :---------------------------: | :----------: |
+|  `problem_path`  |                            `str`                             |            `None`             |  训练集路径  |
+| `model_savepath` |                            `str`                             |            `None`             | 模型保存路径 |
+|     `logger`     | [`logging.Logger`](https://docs.python.org/zh-cn/3.10/library/logging.html?highlight=logging%20logger#logging.Logger) | `logging.getLogger(__name__)` |  日志记录器  |
 
 ##### 输出
 
@@ -793,15 +801,15 @@ $$
 
 ##### 输入
 
-|   参数   |  类型   |    初始值     |   描述   |
-|:------:|:-----:|:----------:|:------:|
-| `path` | `str` | `Required` | 模型保存路径 |
+|  参数  | 类型  | 初始值 |                             描述                             |
+| :----: | :---: | :----: | :----------------------------------------------------------: |
+| `path` | `str` | `None` | 模型保存路径，如果为`None`，则`self.model_savepath`不能为`None` |
 
 ##### 输出
 
 保存路径的绝对路径
 
-#### <a name="svm-train">method train()</a>
+#### method train()
 
 训练一个SVM模型
 
@@ -833,8 +841,8 @@ $$
 
 预测一个SVM模型。
 
-当`self.model is None`时，`model`和`model_path`至少有一个不为`None`，若两者都不为`None`，则`model`优先。
-当`self.model is not None`时，忽略`model`和`model_path`参数。
+> Notes: 当`self.model is None`时，`model`和`model_path`至少有一个不为`None`，若两者都不为`None`，则`model`优先。
+> 当`self.model is not None`时，忽略`model`和`model_path`参数。
 
 ##### 输入
 
@@ -859,31 +867,43 @@ $$
 
 网格搜索，寻找最优参数。
 
-因为筛选过程耗时很久，所以增加了程序终止时自动保存功能（使用[`Trainer`](#class-Trainer)），并且可以从中断处继续筛选。
-
-如果要从中断处恢复筛选，应设置`from_record = True`，`record_path = {your_file_path}`，`your_file_path`为自动保存的训练状态文件，保持训练参数和原来的训练参数一致。（具体来说，训练参数是指`problem_path`、`c_min`、`c_max`、`c_step`、`g_min`、`g_max`、`g_step`）
-此处的`problem_path`与原来一致是指该路径指定的训练集文件内容不变。
-
-> 后续版本将会改进自动保存机制，恢复筛选将不需要输入训练参数，而是从保存文件中自动读取。
+> Notes: 筛选过程耗时很久，使用[`Trainer`](#class-Trainer)可在程序终止时自动保存筛选进度，并使用[`grid_from_state()`](#method-grid_from_state())方法从中断处继续筛选。
 
 ##### 输入
 
-|       参数       |  类型   |              初始值               |                             描述                             |
-| :--------------: | :-----: | :-------------------------------: | :----------------------------------------------------------: |
-|  `problem_path`  |  `str`  |              `None`               |                   标准libsvm格式训练集路径                   |
-|     `n_fold`     |  `int`  |                `5`                |                         交叉验证折数                         |
-| `enable_logging` | `bool`  |              `False`              |                       是否打印搜索进度                       |
-|     `c_min`      | `float` |              `1e-8`               |                         Cost的最小值                         |
-|     `c_max`      | `float` |               `1e8`               |                         Cost的最大值                         |
-|     `c_step`     | `float` |               `10`                |                          Cost的步长                          |
-|     `g_min`      | `float` |              `1e-8`               |                        gamma的最小值                         |
-|     `g_max`      | `float` |               `1e8`               |                        gamma的最大值                         |
-|     `g_step`     | `float` |               `10`                |                         gamma的步长                          |
-|    `detailed`    | `bool`  |              `False`              | 是否返回详细信息<br/>`detailed = True`时，返回所有搜索结果的列表，并绘制结果图像<br/>`detailed = False`时，只返回准确度最高的结果 |
-|    `img_name`    |  `str`  | `r'..\svm\train\grid_result.png'` |                         保存的图片名                         |
-|      `dpi`       |  `int`  |              `1000`               |                          图片的dpi                           |
-|  `from_record`   | `bool`  |              `False`              |                     是否从记录文件中读取                     |
-|  `record_path`   |  `str`  |              `None`               |                         记录文件路径                         |
+|      参数      |  类型   |             初始值              |                             描述                             |
+| :------------: | :-----: | :-----------------------------: | :----------------------------------------------------------: |
+| `problem_path` |  `str`  |             `None`              |                   标准libsvm格式训练集路径                   |
+|    `n_fold`    |  `int`  |               `5`               |                         交叉验证折数                         |
+|    `c_min`     | `float` |             `1e-8`              |                         Cost的最小值                         |
+|    `c_max`     | `float` |              `1e8`              |                         Cost的最大值                         |
+|    `c_step`    | `float` |              `10`               |                          Cost的步长                          |
+|    `g_min`     | `float` |             `1e-8`              |                        gamma的最小值                         |
+|    `g_max`     | `float` |              `1e8`              |                        gamma的最大值                         |
+|    `g_step`    | `float` |              `10`               |                         gamma的步长                          |
+|   `detailed`   | `bool`  |             `False`             | 是否返回详细信息<br/>`detailed = True`时，返回所有搜索结果的列表，并绘制结果图像<br/>`detailed = False`时，只返回准确度最高的结果 |
+|   `img_name`   |  `str`  | `r'.\svm\data\grid_result.png'` |                         保存的图片名                         |
+|     `dpi`      |  `int`  |             `1000`              |                          图片的dpi                           |
+
+##### 输出
+
+`detailed = True`时，返回所有搜索结果的列表，并绘制结果图像
+`detailed = False`时，只返回准确度最高的结果
+
+#### method grid_from_state()
+
+从支持向量机筛选进度文件中读取筛选进度并继续筛选。
+
+#### 输入
+
+|      参数      |  类型  |             初始值              |                             描述                             |
+| :------------: | :----: | :-----------------------------: | :----------------------------------------------------------: |
+|  `state_path`  | `str`  |           `Required`            |                     筛选进度记录文件路径                     |
+| `problem_path` | `str`  |             `None`              |                   标准libsvm格式训练集路径                   |
+|    `n_fold`    | `int`  |               `5`               |                         交叉验证折数                         |
+|   `detailed`   | `bool` |             `False`             | 是否返回详细信息<br/>`detailed = True`时，返回所有搜索结果的列表，并绘制结果图像<br/>`detailed = False`时，只返回准确度最高的结果 |
+|   `img_name`   | `str`  | `r'.\svm\data\grid_result.png'` |                         保存的图片名                         |
+|     `dpi`      | `int`  |             `1000`              |                          图片的dpi                           |
 
 ##### 输出
 
