@@ -1,5 +1,6 @@
 import torch
 from torch import nn, optim
+from torch.utils.data import DataLoader
 
 from src.utils import *
 
@@ -17,12 +18,11 @@ if __name__ == '__main__':
     # p_vals: a list of decision values or probability estimates (if '-b 1' is specified).
     # If k is the number of classes, for decision values, each element includes results of predicting k(k-1)/2 binary-class SVMs.
     # For probabilities, each element contains k values indicating the probability that the testing instance is in each class. Note that the order of classes here is the same as 'model.label' field in the model structure.
-    model = LSTMModel(
+    model = TextClassifier(
         input_size=101895,
         hidden_size=256,
         output_size=2,
         num_layers=1,
-        device=torch.device('cuda'),
         fc=nn.Sequential(
             nn.Linear(256, 128),
             nn.ReLU(),
@@ -35,4 +35,4 @@ if __name__ == '__main__':
                       optimizer=optim.Adam(model.parameters(), lr=0.001), criterion=nn.CrossEntropyLoss(),
                       autosave=False, autosave_dir=r'..\autosave')
     trainer.load(r'..\lstm\model\new_train_lstm.pth')
-    nn_predict_result = trainer.evaluate(converter.tfidf_dataset)
+    nn_predict_result = trainer.evaluate(DataLoader(converter.tfidf_dataset, batch_size=64, num_workers=5))
