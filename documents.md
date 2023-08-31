@@ -48,7 +48,7 @@
             - `module` [`tensor.py`](#module-tensorpy)
                 - `func` [`randn_tensor_within_norm()`](#func-randn_tensor_within_norm())
                 - `func` [`random_tensors_outside_existed_tensors()`](#func-random_tensors_outside_existed_tensors())
-            - `module` [`train.py`](#tmodule-rainpy)
+            - `module` [`train.py`](#module-trainpy)
                 - `class` [`Trainer`](#class-Trainer)
             - `module` [`typecheck.py`](#module-typecheckpy)
 - `directory` `svm`
@@ -975,19 +975,56 @@ $$
 
 #### Attributes
 
-|         属性         |                                                              类型                                                               |          初始值          |                                                   描述                                                    |
-|:------------------:|:-----------------------------------------------------------------------------------------------------------------------------:|:---------------------:|:-------------------------------------------------------------------------------------------------------:|
-|     `autosave`     |                                                            `bool`                                                             |        `True`         |                                               是否自动保存训练结果                                                |
-|   `autosave_dir`   |                                                             `str`                                                             |   `r'..\autosave'`    |                                             自动保存的**文件夹**路径                                              |
-|  `tfidf_dataset`   |      [`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html?highlight=dataset#torch.utils.data.Dataset)       |        `None`         | 存有`tfidf`和`label`的数据集，一般使用[`Converter`](#class-Converter)的[`tfidf_dataset`](#Converter-tfidf-dataset)属性 |
-| `word2vec_dataset` |      [`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html?highlight=dataset#torch.utils.data.Dataset)       |        `None`         |                                                **TODO**                                                 |
-|  `svm_train_path`  |                                                             `str`                                                             |        `None`         |                                          SVM的训练集文件，**必须**实际存在                                           |
-|  `svm_model_path`  |                                                             `str`                                                             |        `None`         |                                           SVM的模型文件，**必须**实际存在                                           |
-|       `svm`        |                                                    [`svm.SVM`](#class-SVM)                                                    | [`SVM()`](#class-SVM) |                               svm实例，训练SVM时使用该属性的[`train()`](#svm-train)方法                               |
-|      `model`       | [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) |        `None`         |                   要训练的神经网络模型，一般使用[`lstm.LSTMModel`](#class-LSTMModel)，也可以传入其它`Module`                   |
-|    `optimizer`     |        [`torch.optim.Optimizer`](https://pytorch.org/docs/stable/optim.html?highlight=optimizer#torch.optim.Optimizer)        |        `None`         |                                              训练神经网络时使用的优化器                                              |
-|    `criterion`     | [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) |        `None`         |                                             训练神经网络时使用的损失函数                                              |
-|      `device`      |            [`torch.device`](https://pytorch.org/docs/stable/tensor_attributes.html?highlight=device#torch.device)             |        `None`         |                                              训练神经网络时使用的设备                                               |
+|        属性        |                             类型                             |            初始值             |                             描述                             |
+| :----------------: | :----------------------------------------------------------: | :---------------------------: | :----------------------------------------------------------: |
+|      `logger`      | [`logging.Logger`](https://docs.python.org/zh-cn/3.10/library/logging.html?highlight=logging%20logger#logging.Logger) | `logging.getLogger(__name__)` |                          日志记录器                          |
+|     `autosave`     |                            `bool`                            |            `True`             |                     是否自动保存训练结果                     |
+|   `autosave_dir`   |                            `str`                             |        `r'.\autosave'`        |                   自动保存的**文件夹**路径                   |
+|  `tfidf_dataset`   |   [`src.utils.dataset.TfIdfDataset`](#class-TfIdfDataset)    |            `None`             | 存有`tfidf`和`label`的数据集，一般使用[`Converter`](#class-Converter)的`tfidf_dataset`属性 |
+| `word2vec_dataset` | [`src.utils.dataset.Word2VecDataset`](#class-Word2VecDataset) |            `None`             | 存有词向量和`label`的数据集，一般使用[`Converter`](#class-Converter)的`word2vec_dataset`属性 |
+|  `svm_train_path`  |                            `str`                             |            `None`             |              SVM的训练集文件，**必须**实际存在               |
+|  `svm_model_path`  |                            `str`                             |            `None`             |               SVM的模型文件，**必须**实际存在                |
+|       `svm`        |              [`src.utils.svm.SVM`](#class-SVM)               |     [`SVM()`](#class-SVM)     |         svm实例，训练SVM时使用该属性的`train()`方法          |
+|      `model`       | [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) |            `None`             | 要训练的神经网络模型，一般使用[`TextClassifier`](#class-TextClassifier)，也可以传入其它[`Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) |
+|    `optimizer`     | [`torch.optim.Optimizer`](https://pytorch.org/docs/stable/optim.html?highlight=optimizer#torch.optim.Optimizer) |            `None`             |                  训练神经网络时使用的优化器                  |
+|    `criterion`     | [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) |            `None`             |                 训练神经网络时使用的损失函数                 |
+|      `device`      | [`torch.device`](https://pytorch.org/docs/stable/tensor_attributes.html?highlight=device#torch.device) |            `None`             |                   训练神经网络时使用的设备                   |
+
+#### classmethod autosave_signals()
+
+当程序收到某些信号([`signal.Signals`](https://docs.python.org/zh-cn/3.10/library/signal.html))时，启动自动保存机制并结束程序。
+
+##### 输入
+
+`None`
+
+##### 输出
+
+一个`frozenset`，元素是信号。
+
+#### classmethod add_autosave_signals()
+
+##### 输入
+
+|        参数         |                             类型                             | 初始值 |                 描述                 |
+| :-----------------: | :----------------------------------------------------------: | :----: | :----------------------------------: |
+| `*autosave_signals` | [`signal.Signals`](https://docs.python.org/zh-cn/3.10/library/signal.html) | `None` | 要添加到`autosave_signals()`中的信号 |
+
+##### 输出
+
+`None`
+
+#### classmethod remove_autosave_signals()
+
+##### 输入
+
+|        参数         |                             类型                             | 初始值 |                 描述                 |
+| :-----------------: | :----------------------------------------------------------: | :----: | :----------------------------------: |
+| `*autosave_signals` | [`signal.Signals`](https://docs.python.org/zh-cn/3.10/library/signal.html) | `None` | 要从`autosave_signals()`中删除的信号 |
+
+##### 输出
+
+`None`
 
 #### method \_\_init\_\_()
 
@@ -995,45 +1032,75 @@ $$
 
 ##### 输入
 
-|         参数         |                                                              类型                                                               |       初始值        |                                                   描述                                                    |
-|:------------------:|:-----------------------------------------------------------------------------------------------------------------------------:|:----------------:|:-------------------------------------------------------------------------------------------------------:|
-|     `autosave`     |                                                            `bool`                                                             |      `True`      |                                               是否自动保存训练结果                                                |
-|   `autosave_dir`   |                                                             `str`                                                             | `r'..\autosave'` |                                             自动保存的**文件夹**路径                                              |
-|  `tfidf_dataset`   |      [`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html?highlight=dataset#torch.utils.data.Dataset)       |      `None`      | 存有`tfidf`和`label`的数据集，一般使用[`Converter`](#class-Converter)的[`tfidf_dataset`](#Converter-tfidf-dataset)属性 |
-| `word2vec_dataset` |      [`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html?highlight=dataset#torch.utils.data.Dataset)       |      `None`      |                                                **TODO**                                                 |
-|  `svm_train_path`  |                                                             `str`                                                             |      `None`      |                                          SVM的训练集文件，**必须**实际存在                                           |
-|  `svm_model_path`  |                                                             `str`                                                             |      `None`      |                                           SVM的模型文件，**必须**实际存在                                           |
-|      `model`       | [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) |      `None`      |                   要训练的神经网络模型，一般使用[`lstm.LSTMModel`](#class-LSTMModel)，也可以传入其它`Module`                   |
-|    `optimizer`     |        [`torch.optim.Optimizer`](https://pytorch.org/docs/stable/optim.html?highlight=optimizer#torch.optim.Optimizer)        |      `None`      |                                              训练神经网络时使用的优化器                                              |
-|    `criterion`     | [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) |      `None`      |                                             训练神经网络时使用的损失函数                                              |
-|      `device`      |            [`torch.device`](https://pytorch.org/docs/stable/tensor_attributes.html?highlight=device#torch.device)             |      `None`      |                                              训练神经网络时使用的设备                                               |
+|        参数        |                             类型                             |     初始值      |                             描述                             |
+| :----------------: | :----------------------------------------------------------: | :-------------: | :----------------------------------------------------------: |
+|     `autosave`     |                            `bool`                            |     `True`      |                     是否自动保存训练结果                     |
+|   `autosave_dir`   |                            `str`                             | `r'.\autosave'` |                   自动保存的**文件夹**路径                   |
+|  `tfidf_dataset`   |   [`src.utils.dataset.TfIdfDataset`](#class-TfIdfDataset)    |     `None`      | 存有`tfidf`和`label`的数据集，一般使用[`Converter`](#class-Converter)的[`tfidf_dataset`](#Converter-tfidf-dataset)属性 |
+| `word2vec_dataset` | [`src.utils.dataset.Word2VecDataset`](#class-Word2VecDataset) |     `None`      | 存有词向量和`label`的数据集，一般使用[`Converter`](#class-Converter)的`word2vec_dataset`属性 |
+|  `svm_train_path`  |                            `str`                             |     `None`      |              SVM的训练集文件，**必须**实际存在               |
+|  `svm_model_path`  |                            `str`                             |     `None`      |               SVM的模型文件，**必须**实际存在                |
+|      `model`       | [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) |     `None`      | 要训练的神经网络模型，一般使用[`TextClassifier`](#class-TextClassifier)，也可以传入其它[`Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) |
+|    `optimizer`     | [`torch.optim.Optimizer`](https://pytorch.org/docs/stable/optim.html?highlight=optimizer#torch.optim.Optimizer) |     `None`      |                  训练神经网络时使用的优化器                  |
+|    `criterion`     | [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) |     `None`      |                 训练神经网络时使用的损失函数                 |
+|      `device`      | [`torch.device`](https://pytorch.org/docs/stable/tensor_attributes.html?highlight=device#torch.device) |     `None`      |                   训练神经网络时使用的设备                   |
 
 ##### 输出
 
 `None`
 
+#### method early_stopping()
+
+使用早停法训练神经网络。
+
+##### 输入
+
+|        参数        |                             类型                             |   初始值   |                             描述                             |
+| :----------------: | :----------------------------------------------------------: | :--------: | :----------------------------------------------------------: |
+| `train_dataloader` | [`torch.utils.data.DataLoader`](https://pytorch.org/docs/stable/data.html?highlight=dataloader#torch.utils.data.DataLoader) | `Required` |                            训练集                            |
+| `eval_dataloader`  | [`torch.utils.data.DataLoader`](https://pytorch.org/docs/stable/data.html?highlight=dataloader#torch.utils.data.DataLoader) | `Required` |                            评估集                            |
+|     `patience`     |                            `int`                             |  `10000`   | **关键字参数**，评估集损失连续低于最好值超过该轮数，终止训练 |
+|    `max_epoch`     |                            `int`                             |    `1`     |                **关键字参数**，最大训练的轮数                |
+|       `draw`       |                            `bool`                            |  `False`   |      **关键字参数**，是否在每轮训练结束后画出损失值图像      |
+|     `savepath`     |                            `str`                             |   `None`   |                 **关键字参数**，图像保存路径                 |
+
+##### 输出
+
+这个实例自身，即`self`
+
 #### method train()
 
-训练神经网络
+以指定轮数训练神经网络。
 
-因为训练过程耗时很久，所以增加了程序终止时自动保存功能，并且可以从中断处继续训练。
-
-如果要从中断处恢复训练，应设置`from_record = True`，`record_path = {your_file_path}`，`your_file_path`为自动保存的训练状态文件，保持训练参数和原来的训练参数一致。（具体来说，训练参数是指`train_loader`、`num_epochs`）
-此处的`train_loader`与原来一致是指该`DataLoader`存储的训练集内容不变。
-
-> 后续版本将会改进自动保存机制，恢复训练将不需要输入训练参数，而是从保存文件中自动读取。
+> Notes: 筛选过程耗时很久，`self.autosave = True`时可在程序终止时自动保存筛选进度，并使用[`train_from_state()`](#method-train_from_state())方法从中断处继续筛选。
 
 ##### 输入
 
 |       参数        |  类型  | 初始值  |                             描述                             |
 | :---------------: | :----: | :-----: | :----------------------------------------------------------: |
 |     `epochs`      | `int`  |   `1`   |                          训练的轮数                          |
-|    `svm_mode`     | `bool` | `False` |   **关键字参数**，以`self.tfidf_dataset`作为训练集进行训练   |
+|   `tfidf_mode`    | `bool` | `False` |   **关键字参数**，以`self.tfidf_dataset`作为训练集进行训练   |
 |  `word2vec_mode`  | `bool` | `False` | **关键字参数**，以`self.word2vec_dataset`作为训练集进行训练  |
-| `enable_logging`  | `bool` | `False` |               **关键字参数**，是否打印训练进度               |
-|   `from_record`   | `bool` | `False` |         **关键字参数**，是否从记录文件中读取训练结果         |
-|   `record_path`   | `str`  | `None`  |                 **关键字参数**，记录文件路径                 |
+|      `draw`       | `bool` | `False` |      **关键字参数**，是否在每轮训练结束后画出损失值图像      |
 | `**loader_kwargs` | `dict` | `None`  | 见[`torch.utils.data.DataLoader`](https://pytorch.org/docs/stable/data.html?highlight=dataloader#torch.utils.data.DataLoader)，不能传入`dataset`参数 |
+
+##### 输出
+
+这个实例自身，即`self`
+
+#### method train_from_state()
+
+从神经网络训练进度文件中读取训练进度并继续训练。
+
+##### 输入
+
+|       参数        |  类型  |   初始值   |                             描述                             |
+| :---------------: | :----: | :--------: | :----------------------------------------------------------: |
+|      `path`       | `str`  | `Required` |                   神经网络训练进度文件路径                   |
+|   `tfidf_mode`    | `bool` |  `False`   |   **关键字参数**，以`self.tfidf_dataset`作为训练集进行训练   |
+|  `word2vec_mode`  | `bool` |  `False`   | **关键字参数**，以`self.word2vec_dataset`作为训练集进行训练  |
+|      `draw`       | `bool` |  `False`   |      **关键字参数**，是否在每轮训练结束后画出损失值图像      |
+| `**loader_kwargs` | `dict` |   `None`   | 见[`torch.utils.data.DataLoader`](https://pytorch.org/docs/stable/data.html?highlight=dataloader#torch.utils.data.DataLoader)，不能传入`dataset`参数 |
 
 ##### 输出
 
@@ -1045,13 +1112,13 @@ $$
 
 ##### 输入
 
-|      参数       |                                                             类型                                                              |    初始值     |         描述         |
-|:-------------:|:---------------------------------------------------------------------------------------------------------------------------:|:----------:|:------------------:|
-| `test_loader` | [`torch.utils.data.DataLoader`](https://pytorch.org/docs/stable/data.html?highlight=dataloader#torch.utils.data.DataLoader) | `Required` | 存放测试集的`DataLoader` |
+|   参数   |                             类型                             |   初始值   |                             描述                             |
+| :------: | :----------------------------------------------------------: | :--------: | :----------------------------------------------------------: |
+| `loader` | [`torch.utils.data.DataLoader`](https://pytorch.org/docs/stable/data.html?highlight=dataloader#torch.utils.data.DataLoader) | `Required` | 存放测试集的[`DataLoader`](https://pytorch.org/docs/stable/data.html?highlight=dataloader#torch.utils.data.DataLoader) |
 
 ##### 输出
 
-模型预测准确度
+模型预测准确度，单位百分比
 
 #### method predict()
 
@@ -1065,17 +1132,17 @@ $$
 
 ##### 输出
 
-预测结果，类型为[`torch.Tensor`](https://pytorch.org/docs/stable/tensors.html?highlight=tensor#torch.Tensor)
+预测结果，类型为[`torch.return_types.max`](https://pytorch.org/docs/stable/generated/torch.max.html?highlight=torch+return_types+max)
 
 #### method save()
 
-保存训练结果
+保存当前神经网络状态
 
 ##### 输入
 
-|     参数      |  类型   |             初始值             |    描述     |
-|:-----------:|:-----:|:---------------------------:|:---------:|
-| `save_path` | `str` | `r'..\lstm\model\lstm.pth'` | 神经网络的保存路径 |
+|  参数  | 类型  |           初始值           |        描述        |
+| :----: | :---: | :------------------------: | :----------------: |
+| `path` | `str` | `r'.\lstm\model\lstm.pth'` | 神经网络的保存路径 |
 
 ##### 输出
 
@@ -1087,9 +1154,9 @@ $$
 
 ##### 输入
 
-|     参数      |  类型   |             初始值             |     描述      |
-|:-----------:|:-----:|:---------------------------:|:-----------:|
-| `load_path` | `str` | `r'..\lstm\model\lstm.pth'` | 要加载的神经网络的路径 |
+|  参数  | 类型  |   初始值   |          描述          |
+| :----: | :---: | :--------: | :--------------------: |
+| `path` | `str` | `Required` | 要加载的神经网络的路径 |
 
 ##### 输出
 
