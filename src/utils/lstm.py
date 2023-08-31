@@ -23,28 +23,28 @@ class TextClassifier(nn.Module):
             num_layers=self.__num_layers, dropout=typecheck.check_nnfloat(dropout, auto_convert=True),
             batch_first=True
         )
-        self.__h = None
-        self.__c = None
+        self.__hidden = None
+        self.__cell = None
         # 全连接层
         self.__fc = nn.Linear(hidden_size, output_size) if fc is None else typecheck.TypeCheck(nn.Module)(fc)
         # sigmoid层
         self.__sigmoid = nn.Sigmoid()
 
-    def __init_hidden_and_cell(self, batch_size: int = None):
-        if batch_size is None:
-            self.__h = torch.zeros(self.__num_layers, self.__hidden_size)
-            self.__c = torch.zeros(self.__num_layers, self.__hidden_size)
+    def init_hidden(self, input_tensor: torch.Tensor):
+        if input_tensor.ndim == 2:
+            init = torch.zeros(self.__num_layers, self.__hidden_size).to(input_tensor.device)
         else:
-            self.__h = torch.zeros(self.__num_layers, batch_size, self.__hidden_size)
-            self.__c = torch.zeros(self.__num_layers, batch_size, self.__hidden_size)
+            init = torch.zeros(self.__num_layers, input_tensor.size(0), self.__hidden_size).to(input_tensor.device)
+        self.__hidden = init
+        self.__cell = init.clone()
+
+    def detach_hidden(self):
+        self.__hidden = self.__hidden.detach() if self.__hidden is not None else None
+        self.__cell = self.__cell.detach() if self.__cell is not None else None
 
     def forward(self, input_tensor: torch.Tensor) -> torch.Tensor:
-        if self.__h is None and self.__c is None:
-            if input_tensor.ndim == 2:
-                self.__init_hidden_and_cell()
-            elif input_tensor.ndim == 3:
-                self.__init_hidden_and_cell(input_tensor.shape[0])
-        lstm_out, (self.__h, self.__c) = self.__lstm(input_tensor, (self.__h, self.__c))
+        self.init_hidden(input_tensor)
+        lstm_out, (self.__hidden, self.__cell) = self.__lstm(input_tensor, (self.__hidden, self.__cell))
         fc_out = self.__fc(lstm_out if lstm_out.ndim == 2 else lstm_out[:, -1, :])
         sigmoid_out = self.__sigmoid(fc_out)
         return sigmoid_out

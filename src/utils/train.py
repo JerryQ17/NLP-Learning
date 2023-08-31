@@ -251,7 +251,7 @@ class Trainer:
 
     def __transform_tensors(self, texts: torch.Tensor, labels: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         texts = texts.float().to(self.__device)
-        labels = torch.Tensor([[1.0, 0.0] if j.item() else [0.0, 1.0] for j in labels]).to(self.__device)
+        labels = labels.to(torch.long).to(self.__device)
         return texts, labels
 
     def __single_train(self, loader: DataLoader) -> float:
@@ -261,11 +261,12 @@ class Trainer:
             self.__model.to(self.__device)
             for texts, labels in loader:
                 texts, labels = self.__transform_tensors(texts, labels)
-                loss = self.__criterion(self.__model(texts), labels)
+                output = self.__model(texts)
+                loss = self.__criterion(output, labels)
                 self.__optimizer.zero_grad()
                 loss.backward()
+                losses.append(loss.detach().item())
                 self.__optimizer.step()
-                losses.append(loss.item())
             return sum(losses) / len(losses)
         except Exception as error:
             self.__logger.exception('训练时遇到错误', exc_info=error)
@@ -296,7 +297,6 @@ class Trainer:
         train_losses = []
         eval_losses = []
         best_eval_loss = float('inf')
-
         for epoch in range(max_epoch):
             self.__logger.info(f"Epoch {epoch + 1}")
             train_losses.append(self.__single_train(train_dataloader))
@@ -306,7 +306,8 @@ class Trainer:
             with torch.no_grad():
                 for texts, labels in eval_dataloader:
                     texts, labels = self.__transform_tensors(texts, labels)
-                    eval_loss += self.__criterion(self.__model(texts), labels).item()
+                    output = self.__model(texts)
+                    eval_loss += self.__criterion(output, labels).detach().item()
             eval_loss /= len(eval_dataloader)
             eval_losses.append(eval_loss)
             self.__logger.info(f'eval_loss: {eval_loss}, best_eval_loss: {best_eval_loss}')
