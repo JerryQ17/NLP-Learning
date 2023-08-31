@@ -86,16 +86,11 @@ class SelfAttention(nn.Module):
         self.__key = nn.Linear(self.__hidden_size, self.__hidden_size)
         self.__value = nn.Linear(self.__hidden_size, self.__hidden_size)
 
-    def forward(self, x):
-        q = self.__query(x)
-        k = self.__key(x)
-        v = self.__value(x)
-
-        attn_scores = torch.matmul(q, k.transpose(-2, -1))
-        attn_scores = torch.softmax(attn_scores, dim=-1)
-
-        weighted_sum = torch.matmul(attn_scores, v)
-        return weighted_sum
+    def forward(self, input_tensor: torch.Tensor):
+        q: torch.Tensor = self.__query(input_tensor)
+        k: torch.Tensor = self.__key(input_tensor)
+        v: torch.Tensor = self.__value(input_tensor)
+        return ((q @ k.t()) / torch.sqrt(torch.tensor(input_tensor.size(1)))) @ v
 
     @property
     def hidden_size(self):

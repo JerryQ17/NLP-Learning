@@ -35,7 +35,8 @@
                 - `class` [`TfIdfDataset`](#class-TfIdfDataset)
                 - `class` [`Word2VecDataset`](#class-Word2VecDataset)
             - `module` [`lstm.py`](#lstmpy)
-                - `class` [`LSTMModel`](#class-LSTMModel)
+                - `class` [`TextClassifier`](#class-TextClassifier)
+                - `class` [`SelfAttention`](#class-SelfAttention)
             - `module` [`models.py`](#modelspy)
                 - `class` [`GridResult`](#class-GridResult)
                 - `class` [`SVMTrainingState`](#class-SVMTrainingState)
@@ -548,44 +549,128 @@ SVM训练文件的绝对路径。
 
 [源代码](src/utils/lstm.py)
 
-### class LSTMModel
+### class TextClassifier
 
-[`LSTMModel`](#class-LSTMModel)继承了[`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module)，是一个`LSTM`模型，用于神经网络训练。
+[`TextClassifier`](#class-TextClassifier)继承了[`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module)，是一个`LSTM`模型，用于神经网络训练。
 
 #### Attributes
 
-|       属性       |                                                                类型                                                                 |                                                                          初始值                                                                          |                                  描述                                  |
-|:--------------:|:---------------------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------:|
-|    `device`    |              [`torch.device`](https://pytorch.org/docs/stable/tensor_attributes.html?highlight=device#torch.device)               |                                                                 `torch.device('cpu')`                                                                 |                          **只读**，训练模型时使用的设备                           |
-|  `input_dim`   |                                                               `int`                                                               |                                                                      `Required`                                                                       |                             **只读**，输入维数                              |
-|  `hidden_dim`  |                                                               `int`                                                               |                                                                      `Required`                                                                       |                             **只读**，隐藏层维数                             |
-|  `output_dim`  |                                                               `int`                                                               |                                                                      `Required`                                                                       |                             **只读**，输出维数                              |
-|  `num_layers`  |                                                               `int`                                                               |                                                                      `Required`                                                                       |                            **只读**，LSTM层数                             |
-|     `lstm`     |       [`torch.nn.LSTM`](https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html?highlight=torch+nn+lstm#torch.nn.LSTM)       |                                                                           /                                                                           |                            **只读**，LSTM模型                             |
-|      `fc`      |   [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module)   | [`torch.nn.Linear(hidden_dim, output_dim)`](https://pytorch.org/docs/stable/generated/torch.nn.Linear.html?highlight=torch+nn+linear#torch.nn.Linear) |                            **只读**，全连接层模型                             |
-| `dropout_rate` |                                                              `float`                                                              |                                                                          `0`                                                                          | `dropout_rate∈[0,1]`<br/>`dropout`层要丢弃的神经元的比例<br/>等于`0`时禁用`dropout`层 |
-|   `dropout`    | [`torch.nn.Dropout`](https://pytorch.org/docs/stable/generated/torch.nn.Dropout.html?highlight=torch+nn+dropout#torch.nn.Dropout) |                                                                           /                                                                           |              **只读**，`dropout`层模型，与`dropout_rate`属性自动同步               |
-|   `sigmoid`    | [`torch.nn.Sigmoid`](https://pytorch.org/docs/stable/generated/torch.nn.Sigmoid.html?highlight=torch+nn+sigmoid#torch.nn.Sigmoid) |                                                                           /                                                                           |                         **只读**，`Sigmoid`层模型                          |
+|     属性      |                             类型                             |                            初始值                            |    描述     |
+| :-----------: | :----------------------------------------------------------: | :----------------------------------------------------------: | :---------: |
+| `input_size`  |                            `int`                             |                          `Required`                          |  输入维数   |
+| `hidden_size` |                            `int`                             |                          `Required`                          | 隐藏层维数  |
+| `output_size` |                            `int`                             |                          `Required`                          |  输出维数   |
+| `num_layers`  |                            `int`                             |                          `Required`                          |  LSTM层数   |
+|    `lstm`     | [`torch.nn.LSTM`](https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html?highlight=torch+nn+lstm#torch.nn.LSTM) | [`torch.nn.LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers, dropout=dropout, batch_first=True)`](https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html?highlight=torch+nn+lstm#torch.nn.LSTM) |  LSTM模型   |
+|     `fc`      | [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) | [`torch.nn.Linear(hidden_size, output_size)`](https://pytorch.org/docs/stable/generated/torch.nn.Linear.html?highlight=torch+nn+linear#torch.nn.Linear) |  全连接层   |
+|   `sigmoid`   | [`torch.nn.Sigmoid`](https://pytorch.org/docs/stable/generated/torch.nn.Sigmoid.html?highlight=torch+nn+sigmoid#torch.nn.Sigmoid) | [`torch.nn.Sigmoid()`](https://pytorch.org/docs/stable/generated/torch.nn.Sigmoid.html?highlight=torch+nn+sigmoid#torch.nn.Sigmoid) | `Sigmoid`层 |
 
 #### method \_\_init__()
 
-初始化一个`LSTMModel`实例
+初始化一个[`TextClassifier`](#class-TextClassifier)实例
 
 ##### 输入
 
-|       参数       |                                                              类型                                                               |          初始值          |                                  描述                                  |
-|:--------------:|:-----------------------------------------------------------------------------------------------------------------------------:|:---------------------:|:--------------------------------------------------------------------:|
-|  `input_dim`   |                                                             `int`                                                             |      `Required`       |                                 输入维数                                 |
-|  `hidden_dim`  |                                                             `int`                                                             |      `Required`       |                                隐藏层维数                                 |
-|  `output_dim`  |                                                             `int`                                                             |      `Required`       |                                 输出维数                                 |
-|  `num_layers`  |                                                             `int`                                                             |      `Required`       |                                LSTM层数                                |
-|      `fc`      | [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) |        `None`         |                                全连接层模型                                |
-| `dropout_rate` |                                                            `float`                                                            |          `0`          | `dropout_rate∈[0,1]`<br/>`dropout`层要丢弃的神经元的比例<br/>等于`0`时禁用`dropout`层 |
-|    `device`    |            [`torch.device`](https://pytorch.org/docs/stable/tensor_attributes.html?highlight=device#torch.device)             | `torch.device('cpu')` |                              训练模型时使用的设备                              |
+|     属性      |                             类型                             |   初始值   |                             描述                             |
+| :-----------: | :----------------------------------------------------------: | :--------: | :----------------------------------------------------------: |
+| `input_size`  |                            `int`                             | `Required` |                           输入维数                           |
+| `hidden_size` |                            `int`                             | `Required` |                          隐藏层维数                          |
+| `num_layers`  |                            `int`                             | `Required` |                           LSTM层数                           |
+| `output_size` |                            `int`                             | `Required` |                           输出维数                           |
+|     `fc`      | [`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module) |   `None`   |                           全连接层                           |
+|   `dropout`   |                           `float`                            |    `0`     | `dropout`层要丢弃的神经元的比例<br/>`dropout∈[0,1]`，等于`0`时禁用`dropout` |
 
 ##### 输出
 
 `None`
+
+#### method init_hidden()
+
+初始化隐藏层和细胞层状态，将其设置为零张量。
+
+> Notes: 此函数在前向传播时自动调用，用户**不需要**显式调用此方法。
+
+##### 输入
+
+|      属性      |                             类型                             |   初始值   |                  描述                  |
+| :------------: | :----------------------------------------------------------: | :--------: | :------------------------------------: |
+| `input_tensor` | [`torch.Tensor`](https://pytorch.org/docs/stable/tensors.html#torch.Tensor) | `Required` | 根据输入张量来初始化隐藏层和细胞层状态 |
+
+##### 输出
+
+`None`
+
+#### method detach_hidden()
+
+当某一训练轮次结束，反向传播结束，隐藏层和细胞层的计算图被Pytorch自动删除。进入下一轮训练，再次反向传播时，Pytorch找不到隐藏层和细胞层的计算图，导致训练失败。调用此方法则可以将隐藏层和细胞层张量从计算图中分离出去，避免此错误发生。
+
+> RuntimeError: Trying to backward through the graph a second time (or directly access saved tensors after they have already been freed). Saved intermediate values of the graph are freed when you call .backward() or autograd.grad(). Specify retain_graph=True if you need to backward through the graph a second time or if you need to access saved tensors after calling backward.
+
+##### 输入
+
+`None`
+
+##### 输出
+
+`None`
+
+#### method forward()
+
+前向传播函数。
+
+> Notes: Pytorch内部自动调用，用户**不需要**显式调用此方法。
+
+##### 输入
+
+|      属性      |                             类型                             |   初始值   |    描述    |
+| :------------: | :----------------------------------------------------------: | :--------: | :--------: |
+| `input_tensor` | [`torch.Tensor`](https://pytorch.org/docs/stable/tensors.html#torch.Tensor) | `Required` | 模型的输入 |
+
+##### 输出
+
+前向传播的结果。
+
+### class SelfAttention
+
+[`SelfAttention`](#class-SelfAttention)继承了[`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module)，实现了自注意力机制，用于神经网络训练。
+
+以下是自注意力机制`Self-Attention`的公式：
+
+$$
+\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
+$$
+
+其中，$Q$、$K$、$V$ 分别表示查询`Query`、键`Key`和值`Value`的向量表示，$d_k$ 是嵌入维度。通过计算查询和键的内积得到注意力权重，然后对值进行加权求和以得到最终的输出。这个注意力权重表示了查询和键之间的相似度，即指示了哪些键对于查询更加重要。
+
+#### method \_\_init__()
+
+初始化一个[`SelfAttention`](#class-SelfAttention)实例
+
+##### 输入
+
+|     属性      | 类型  |   初始值   |   描述   |
+| :-----------: | :---: | :--------: | :------: |
+| `hidden_size` | `int` | `Required` | 嵌入维度 |
+
+##### 输出
+
+`None`
+
+#### method forward()
+
+前向传播函数。
+
+> Notes: Pytorch内部自动调用，用户**不需要**显式调用此方法。
+
+##### 输入
+
+|      属性      |                             类型                             |   初始值   |    描述    |
+| :------------: | :----------------------------------------------------------: | :--------: | :--------: |
+| `input_tensor` | [`torch.Tensor`](https://pytorch.org/docs/stable/tensors.html#torch.Tensor) | `Required` | 模型的输入 |
+
+##### 输出
+
+前向传播的结果。
 
 ---
 
