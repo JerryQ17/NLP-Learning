@@ -30,8 +30,10 @@
                 - `class` [`Converter`](#class-Converter)
                 - `class` [`Word2VecSequence`](#class-Word2VecSequence)
             - `module` [`dataset.py`](#datasetpy)
+                - `class` [`_SplittableDataset`](#class-_SplittableDataset)
                 - `class` [`IMDBDataset`](#class-IMDBDataset)
                 - `class` [`TfIdfDataset`](#class-TfIdfDataset)
+                - `class` [`Word2VecDataset`](#class-Word2VecDataset)
             - `module` [`lstm.py`](#lstmpy)
                 - `class` [`LSTMModel`](#class-LSTMModel)
             - `module` [`models.py`](#modelspy)
@@ -74,6 +76,8 @@
 [`Converter`](#class-Converter)是[`IMDBDataset`](#class-IMDBDataset)和[`Trainer`](#class-Trainer)之间的桥梁，它提供了一些易于使用的API，可以将数据集中的原始数据转换为`SVM`或`Neutral Network`便于处理的数据形式，从而简化了数据处理的流程。
 
 > Tips:[`tfidf_matrix`](#Converter-tfidf-matrix)、[`feature_names`](#Converter-feature-names)、[`tfidf_dataset`](#Converter-tfidf-dataset)属性无需显式调用[`tfidf()`](#method-tfidf())方法，内部会自动调用。即使你改变了[`dataset`](#Converter-dataset)属性，这些属性也会自动更新。
+
+#### Attributes
 
 |        属性         |                             类型                             |            初始值             |                             描述                             |
 | :-----------------: | :----------------------------------------------------------: | :---------------------------: | :----------------------------------------------------------: |
@@ -119,7 +123,9 @@
 
 #### method word2vec()
 
-首先加载`nltk`的`punkt`分词器，使用[`nltk.word_tokenize`](https://www.nltk.org/api/nltk.tokenize.word_tokenize.html?highlight=word_tokenize#nltk.tokenize.word_tokenize)对原始数据集中的句子进行分词，然后使用[`gensim.models.word2vec.Word2Vec`](https://radimrehurek.com/gensim/models/word2vec.html#gensim.models.word2vec.Word2Vec)计算分词的词向量并转换成张量([`torch.Tensor`](https://pytorch.org/docs/stable/tensors.html#torch.Tensor))，并调用`src.utils.tensor.random_tensors_outside_existed_tensors`函数生成两个距离所有有效词向量足够远的张量(此处的距离指欧几里得距离)，分别作为填充张量和未知单词(不在单词表里的单词)的张量并存入单词表，最后创建并返回`self.word2vec_dataset。`
+首先加载`nltk`的`punkt`分词器，使用[`nltk.word_tokenize`](https://www.nltk.org/api/nltk.tokenize.word_tokenize.html?highlight=word_tokenize#nltk.tokenize.word_tokenize)对原始数据集中的句子进行分词，
+然后使用[`gensim.models.word2vec.Word2Vec`](https://radimrehurek.com/gensim/models/word2vec.html#gensim.models.word2vec.Word2Vec)计算分词的词向量并转换成张量([`torch.Tensor`](https://pytorch.org/docs/stable/tensors.html#torch.Tensor))，
+并调用`src.utils.tensor.random_tensors_outside_existed_tensors`函数生成两个距离所有有效词向量足够远的张量(此处的距离指欧几里得距离)，分别作为填充张量和未知单词(不在单词表里的单词)的张量并存入单词表，最后创建并返回`self.word2vec_dataset。`
 
 > **Warning**: 一般情况下不应该指定`sentences`的值。如果你改变了`sentences`的值，将会基于指定的句子计算的词向量，而不是预期的`self.dataset`中的句子。
 
@@ -147,7 +153,7 @@
 
 ##### 输出
 
-SVM训练文件的绝对路径
+SVM训练文件的绝对路径。
 
 #### method word2vec_to_svm()
 
@@ -170,7 +176,7 @@ SVM训练文件的绝对路径
 
 ##### 输出
 
-SVM训练文件的绝对路径
+SVM训练文件的绝对路径。
 
 ### class Word2VecSequence
 
@@ -181,6 +187,8 @@ SVM训练文件的绝对路径
 由于各个句子长短不一，将它们同时转换成相同长度的二维张量并存储，将会占用大量内存。以`IMDB Dataset`为例，当词向量维数取默认值`100`时，最终的所有以张量形式表示的句子理论上将会占用`46GB`的内存，如果直接运行程序而不加以改进，将会导致电脑严重卡顿，甚至蓝屏死机，这显然是不可接受的。
 
 因此，在存储这些张量时，我借鉴了生成器(`Generator`)的思想，以时间换空间。在类的内部，实际上存储的是单词表、所有句子的分词结果、计算句子张量的算法。每次获取元素时，根据单词表和句子的分词计算对应的句子张量。在程序运行时，经粗略估算，其实际内存占用仅约`1GB`，相较于之前`46GB`的理论占用，节省内存的效果显著。
+
+#### Attributes
 
 该类无公共属性。
 
@@ -209,7 +217,7 @@ SVM训练文件的绝对路径
 
 ##### 输出
 
-总句子数量
+总句子数量。
 
 #### method \_\_getitem__()
 
@@ -223,9 +231,9 @@ SVM训练文件的绝对路径
 
 ##### 输出
 
-当输入为一个整数时，返回一个二维张量，形状为`(最大句子长度, 词张量维度)`
+当输入为一个整数时，返回一个二维张量，形状为`(最大句子长度, 词张量维度)`。
 
-当输入为一个切片时，返回一个三维张量，形状为`(切片长度, 最大句子长度, 词张量维度)`
+当输入为一个切片时，返回一个三维张量，形状为`(切片长度, 最大句子长度, 词张量维度)`。
 
 ---
 
@@ -233,36 +241,248 @@ SVM训练文件的绝对路径
 
 [源代码](src/utils/dataset.py)
 
-### class IMDBDataset
+### class _SplittableDataset
 
-[`IMDBDataset`](#class-IMDBDataset)继承了[`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html?highlight=dataset#torch.utils.data.Dataset)，它从`csv`文件中读取数据集，转化为特定的数据结构，便于开展后续的数据处理工作。
+[`_SplittableDataset`](#class-_SplittableDataset)继承了[`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html?highlight=dataset#torch.utils.data.Dataset), `Sized`, `abc.ABC`，有一个抽象方法`get_subset()`。
 
-`__getitem__()`方法返回的数据结构取决于`get_item_by_tuple`属性。
+它是`src.utils.dataset`的核心部分，是[`IMDBDataset`](#class-IMDBDataset), [`TfIdfDataset`](#class-TfIdfDataset), [`Word2VecDataset`](#class-Word2VecDataset)的父类。用户**不应该**创建该类的实例。
 
-`__len__()`方法返回数据集的长度。
+它提供了根据索引创建子集、按比例划分子集的功能。其特点是子集的数据以映射的方式直接从父集获取，不需要复制原数据至子集内保存，大幅减少了数据集存储时的内存占用。
 
-> Tips: `IMDBDataset`是可迭代的
+举个例子：如图所示，`son`和`parent`都是[`_SplittableDataset`](#class-_SplittableDataset)的一个实例。
 
-|         属性          |                                           类型                                           |    初始值     |                                              描述                                               |
-|:-------------------:|:--------------------------------------------------------------------------------------:|:----------:|:---------------------------------------------------------------------------------------------:|
-|    `save_memory`    |                                         `bool`                                         |  `False`   |                                         **只读**，是否节省内存                                         |
-| `get_item_by_tuple` |                                         `bool`                                         |  `False`   | `True`时，`__getitem__()`方法返回一个元组<br/>`False`时，`__getitem__()`方法返回一个[`Review`](#class-Review)实例 |
-| `dataset_pathname`  |                                         `str`                                          | `Required` |                                      `csv`文件的路径，**必须**存在                                      |
-|   `dataset_title`   |                                         `str`                                          |     /      |                                    **只读**，`csv`文件的文件名，自动更新                                    |
-|       `item`        |                            [`models.Review`](#class-Review)                            |     /      |                         **只读**，数据集中的当前项<br/>`save_memory = False`时无效                          |
-|       `items`       | [`numpy.ndarray`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) |     /      |                       **只读**，数据集中的所有项<br/>`save_memory = True`时为`None`                        |
+其中，`son._indexs = (1, 5, 9) son._parent = parent`，那么`son[0] = son._parent[son._indexs[0]] = parent[1]`。
+
+![_splittable_ds](./assets/_splittable_ds.png)
+
+> **Warning**: 由于子类存储的数据结构不明，内部映射方法**不支持**切片(`slice`)。子类实现`__getitem__()`方法时，如果有通过切片一次获取多条数据的需求，可多次调用`__getitem__()`方法或重载映射方法。
+
+> Notes: 子集中可能没有父集中的某些属性，此时应调用[`_mapping_attr()`](#method-_mapping_attr())方法获取父集中的对应属性。如:
+>
+> ```python
+> class ExampleDataset(_SplittableDataset):
+> 	def __init__(self, data):
+> 		super.__init__()
+> 		self.data = data
+> 
+> 
+> >>> parent = ExampleDataset([1, 1, 4, 5, 1, 4])
+> >>> son = parent.split(0.5)[0]
+> >>> son.data[0]
+> AttributeError: 'ExampleDataset' object has no attribute 'data'
+> >>> son._mapping_attr("data")[0]
+> 1
+> ```
+>
+> 上述代码仅用于示例，实际上不应该让用户使用该保护(`protected`)方法获取根集中的属性，你应该用`property`装饰器提供一个获取根集的属性的接口(`Getter`)。如：
+>
+> ```python
+> class ExampleDataset(_SplittableDataset):
+> 	def __init__(self, data):
+> 		super.__init__()
+> 		self._data = data
+> 
+> 	@property
+>     def data(self):
+>         return self._mapping_attr("_data")
+> ```
+>
+> 这段代码仍有一定缺陷：当用户在子集调用`instance.data`时，将直接访问到根集的`data`属性，你应该根据数据集内存储的数据结构改进`data`方法。
+
+#### Attributes
+
+|    属性    |                       类型                        | 初始值 |                             描述                             |
+| :--------: | :-----------------------------------------------: | :----: | :----------------------------------------------------------: |
+| `_is_root` |                      `bool`                       | `True` |                          是否为根集                          |
+| `_indexs`  |                   `tuple[int]`                    | `None` | `self._is_root`为`True`时，`None`<br/>`self._is_root`为`False`时，子集对应的父集的索引 |
+| `_parent`  | [`_SplittableDataset`](#class-_SplittableDataset) | `None` | `self._is_root`为`True`时，`None`<br/>`self._is_root`为`False`时，子集对应的父集 |
 
 #### method \_\_init__()
 
-初始化一个[`IMDBDataset`](#class-IMDBDataset)实例
+初始化一个[`_SplittableDataset`](#class-_SplittableDataset)实例。
+
+创建一个根集时，使用默认值即可。创建一个子集时，将对应的参数值传给此函数。
 
 ##### 输入
 
-|         参数          |   类型   |    初始值     |                                              描述                                               |
-|:-------------------:|:------:|:----------:|:---------------------------------------------------------------------------------------------:|
-| `dataset_pathname`  | `str`  | `Required` |                                        数据集路径，**必须**存在                                         |
-|    `save_memory`    | `bool` |  `False`   |                                            是否节省内存                                             |
-| `get_item_by_tuple` | `bool` |  `False`   | `True`时，`__getitem__()`方法返回一个元组<br/>`False`时，`__getitem__()`方法返回一个[`Review`](#class-Review)实例 |
+|   参数    |                       类型                        | 初始值 |                             描述                             |
+| :-------: | :-----------------------------------------------: | :----: | :----------------------------------------------------------: |
+| `is_root` |                      `bool`                       | `True` |                          是否为根集                          |
+| `indexs`  |                   `tuple[int]`                    | `None` | `self._is_root`为`True`时，`None`<br/>`self._is_root`为`False`时，子集对应的父集的索引 |
+| `parent`  | [`_SplittableDataset`](#class-_SplittableDataset) | `None` | `self._is_root`为`True`时，`None`<br/>`self._is_root`为`False`时，子集对应的父集 |
+
+##### 输出
+
+`None`
+
+#### method _mapping_index()
+
+一个递归函数。给定一个有效索引值，返回映射至根集的索引。
+
+##### 输入
+
+|  参数   | 类型  |   初始值   |          描述          |
+| :-----: | :---: | :--------: | :--------------------: |
+| `index` | `int` | `Required` | 有效索引值，不支持切片 |
+
+##### 输出
+
+在根集中的实际索引。
+
+#### method _mapping_attr()
+
+一个递归函数。给定一个属性，返回映射至根集的属性。
+
+##### 输入
+
+|  参数  | 类型  |   初始值   |         描述         |
+| :----: | :---: | :--------: | :------------------: |
+| `attr` | `str` | `Required` | 要获取的根集中的属性 |
+
+##### 输出
+
+在根集中的对应属性。
+
+#### method _get()
+
+获取指定属性的某个元素。
+
+> Notes: `_get()`方法适合在`__getitem__()`方法中使用，而`_mapping_attr()`方法适合在一个属性接口(`Getter`)中使用。
+
+##### 输入
+
+|  参数   | 类型  |   初始值   |          描述          |
+| :-----: | :---: | :--------: | :--------------------: |
+| `attr`  | `str` | `Required` |  要获取的根集中的属性  |
+| `index` | `int` | `Required` | 有效索引值，不支持切片 |
+
+##### 输出
+
+在根集中的对应属性的对应元素。
+
+#### method _create_and_init_subset_with_data()
+
+创建一个子集，一般用于辅助实现抽象方法`get_subset()`。
+
+##### 输入
+
+> Notes: `__Gettable`指的是具有`__getitem__()`方法的对象。
+
+> Notes: `**data`曾用于将父集的数据复制到子集中，可能会占用过多的内存。现在由于映射机制的加入，已弃用。`**data`的键是要为子集创建的属性的属性名，值是一个元组，元组的第一项是一个可调用对象，它接受一个生成器，并将生成器内的元素转换成属性的值，元组的第二项是父集的某一个属性。
+>
+> ```python
+> class ExampleDataset(_SplittableDataset):
+> 	def __init__(self, data):
+> 		super.__init__()
+> 		self._data = data
+> 
+> 
+> >>> parent = ExampleDataset([1, 1, 4, 5, 1, 4])
+> # 创建一个子集，子集的_data属性是一个列表
+> >>> son = parent._create_and_init_subset_with_data(1, 3, 5, _data=(list, parent.data))
+> >>> son._data[1]
+> 5
+> >>> type(son._data)
+> <class 'list'>
+> # 创建一个子集，子集的_data属性是一个张量
+> >>> import torch
+> >>> tensor_son = parent._create_and_init_subset_with_data(
+> 	1, 3, 5,
+> 	_data=(lambda x: torch.Tensor(list(x)), parent.data)
+> )
+> >>> son._data[1]
+> tensor(5.)
+> ```
+
+|   参数   |                          类型                          | 初始值 |              描述              |
+| :------: | :----------------------------------------------------: | :----: | :----------------------------: |
+| `*index` |                         `int`                          | `None` | 用于指定子集的索引值`_indexs`  |
+| `**data` | `tuple[Callable[[Generator], __Gettable], __Gettable]` | `None` | 为新创建的子集指定某个属性的值 |
+
+##### 输出
+
+新创建的子集。
+
+#### abstractmethod get_subset()
+
+获取一个子集，由参数中的索引指定。
+
+> Notes: 可以使用`_create_and_init_subset_with_data()`方法创建一个部分初始化的对象，再指定某些自定义属性的值。
+>
+> ```python
+> class ExampleDataset(_SplittableDataset):
+> 	def __init__(self, filename):
+> 		super.__init__()
+> 		self._filename = filename
+> 		self._data = self._read(self._filename) # 从数据集文件中读取数据
+> 
+> 
+> 	def get_subset(self, *index):
+> 		subset = self._create_and_init_subset_with_data(*index)
+> 		subset._filename = self._filename
+> ```
+>
+> 你也许会问：为什么不直接使用`__init__()`方法新建一个数据集呢？例如`subset = ExampleDataset(sub_filename)`。
+>
+> 原因很简单：
+>
+> - 从资源的角度来看，当数据集文件特别大时，即使是创建一个较小的子数据集文件也会消耗大量资源。
+> - 从效率的角度来看，创建一个子集本质上没有改变数据读取的方式，不论你直接将数据存进内存，还是需要时从磁盘读取，读取数据的效率与父集一样，但你创建一个子数据集文件却会浪费大量时间。
+>
+> 与之相反，通过映射机制直接获取父集的数据，不仅不用创建新文件，在数据索引的效率上也没有明显降低。
+>
+> - 如果你的数据直接存在内存里，只需要获取数据在根集中的映射，再索引，除非当前数据集是父集的子集的子集的...(这显然是你的问题，你搞那么多子集干啥？)
+> - 如果你的数据在需要时从磁盘读取，和磁盘的性能相比，获取数据在根集中的映射的消耗可以忽略不计。
+
+##### 输入
+
+|   参数   | 类型  | 初始值 |             描述              |
+| :------: | :---: | :----: | :---------------------------: |
+| `*index` | `int` | `None` | 用于指定子集的索引值`_indexs` |
+
+##### 输出
+
+新创建的子集。
+
+#### method split()
+
+将父集根据比例按顺序或随机分为两个子集。
+
+##### 输入
+
+> Notes: `shuffle = True`时并不会真的改变父集数据的顺序。
+
+|   参数    |  类型   |   初始值   |                   描述                   |
+| :-------: | :-----: | :--------: | :--------------------------------------: |
+|  `ratio`  | `float` | `Required` | 两个子数据集数据长度之比，在`(0, 1)`之间 |
+| `shuffle` | `bool`  |  `False`   |      分割时是否打乱父集中数据的顺序      |
+
+##### 输出
+
+长度为`2`的元组`tuple[son1, son2]`，其中`len(son1) / len(son2) = ratio`。
+
+### class IMDBDataset
+
+[`IMDBDataset`](#class-IMDBDataset)继承了[`src.utils.dataset._SplittableDataset`](#class-_SplittableDataset)，它从`csv`文件中读取数据集，转化为特定的数据结构，便于开展后续的数据处理工作。
+
+> Notes: `self[i]`等价于`self.items[i]`, `len(self)`等价于`len(self.items)`。
+
+#### Attributes
+
+|        属性        |            类型            |   初始值   |             描述              |
+| :----------------: | :------------------------: | :--------: | :---------------------------: |
+| `dataset_pathname` |           `str`            | `Required` | `csv`文件的路径，**必须**存在 |
+|      `items`       | `tuple[tuple[str, float]]` |     /      |       数据集中的所有项        |
+
+#### method \_\_init__()
+
+初始化一个[`IMDBDataset`](#class-IMDBDataset)实例。
+
+##### 输入
+
+|        参数        | 类型  |   初始值   |           描述           |
+| :----------------: | :---: | :--------: | :----------------------: |
+| `dataset_pathname` | `str` | `Required` | 数据集路径，**必须**存在 |
 
 ##### 输出
 
@@ -270,25 +490,53 @@ SVM训练文件的绝对路径
 
 ### class TfIdfDataset
 
-[`TfIdfDataset`](#class-TfIdfDataset)继承了[`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html?highlight=dataset#torch.utils.data.Dataset)，用于神经网络训练。
+[`TfIdfDataset`](#class-TfIdfDataset)继承了[`src.utils.dataset._SplittableDataset`](#class-_SplittableDataset)，用于TF-IDF有关的训练。
 
-一般由[`Converter`](#class-Converter)自动生成，用户**不需要**自行创建该类的实例。
+一般由[`Converter`](#class-Converter)根据计算结果自动创建，用户**不需要**自行创建该类的实例。
 
-|    属性    |                                                       类型                                                       |    初始值     |   描述    |
-|:--------:|:--------------------------------------------------------------------------------------------------------------:|:----------:|:-------:|
+#### Attributes
+
+|   属性   |                             类型                             |   初始值   |   描述   |
+| :------: | :----------------------------------------------------------: | :--------: | :------: |
 | `values` | [`scipy.sparse.csr_matrix`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html) | `Required` | TF-IDF值 |
-| `labels` |             [`numpy.ndarray`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html)             | `Required` |  情感标签   |
+| `labels` | [`torch.Tensor`](https://pytorch.org/docs/stable/tensors.html#torch.Tensor) | `Required` | 情感标签 |
 
 #### method \_\_init__()
 
-初始化一个[`TfIdfDataset`](#class-TfIdfDataset)实例
+初始化一个[`TfIdfDataset`](#class-TfIdfDataset)实例。
 
 ##### 输入
 
-|   参数   |                             类型                             |   初始值   |        描述        |
-| :------: | :----------------------------------------------------------: | :--------: | :----------------: |
-| `values` | [`scipy.sparse.csr_matrix`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html) | `Required` | **只读**，TF-IDF值 |
-| `labels` | [`numpy.ndarray`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) | `Required` | **只读**，情感标签 |
+|   参数   |                             类型                             |   初始值   |   描述   |
+| :------: | :----------------------------------------------------------: | :--------: | :------: |
+| `values` | [`scipy.sparse.csr_matrix`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html) | `Required` | TF-IDF值 |
+| `labels` | [`torch.Tensor`](https://pytorch.org/docs/stable/tensors.html#torch.Tensor) | `Required` | 情感标签 |
+
+##### 输出
+
+`None`
+
+### class Word2VecDataset
+
+[`Word2VecDataset`](#class-Word2VecDataset)继承了[`src.utils.dataset._SplittableDataset`](#class-_SplittableDataset)，用于词向量有关的训练。
+
+#### Attributes
+
+|   属性   |                             类型                             |   初始值   |    描述    |
+| :------: | :----------------------------------------------------------: | :--------: | :--------: |
+| `values` |                   `Sequence[torch.Tensor]`                   | `Required` | 词向量序列 |
+| `labels` | [`torch.Tensor`](https://pytorch.org/docs/stable/tensors.html#torch.Tensor) | `Required` |  情感标签  |
+
+#### method \_\_init__()
+
+初始化一个[`Word2VecDataset`](#class-Word2VecDataset)实例。
+
+##### 输入
+
+|   参数   |                             类型                             |   初始值   |    描述    |
+| :------: | :----------------------------------------------------------: | :--------: | :--------: |
+| `values` |                   `Sequence[torch.Tensor]`                   | `Required` | 词向量序列 |
+| `labels` | [`torch.Tensor`](https://pytorch.org/docs/stable/tensors.html#torch.Tensor) | `Required` |  情感标签  |
 
 ##### 输出
 
@@ -303,6 +551,8 @@ SVM训练文件的绝对路径
 ### class LSTMModel
 
 [`LSTMModel`](#class-LSTMModel)继承了[`torch.nn.Module`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=torch+nn+module#torch.nn.Module)，是一个`LSTM`模型，用于神经网络训练。
+
+#### Attributes
 
 |       属性       |                                                                类型                                                                 |                                                                          初始值                                                                          |                                  描述                                  |
 |:--------------:|:---------------------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------:|
@@ -349,6 +599,8 @@ SVM训练文件的绝对路径
 
 [`GridResult`](#class-GridResult)继承了[`pydantic.BaseModel`](https://docs.pydantic.dev/1.10/usage/models/)，描述了网格搜索的结果
 
+#### Attributes
+
 |    属性    |  类型   |   初始值   |    描述    |
 | :--------: | :-----: | :--------: | :--------: |
 |    `c`     | `float` | `Required` |  惩罚系数  |
@@ -359,6 +611,8 @@ SVM训练文件的绝对路径
 
 [`SVMTrainingState`](#class-SVMTrainingState)继承了[`pydantic.BaseModel`](https://docs.pydantic.dev/1.10/usage/models/)，描述了支持向量机的训练状态
 
+#### Attributes
+
 |      属性       |               类型                |  初始值   |     描述     |
 | :-------------: | :-------------------------------: | :-------: | :----------: |
 | `current_range` | `tuple[tuple[float, float], ...]` | `tuple()` | 当前训练范围 |
@@ -367,6 +621,8 @@ SVM训练文件的绝对路径
 ### class NNTrainingState
 
 [`NNTrainingState`](#class-NNTrainingState)继承了[`pydantic.BaseModel`](https://docs.pydantic.dev/1.10/usage/models/)，描述了神经网络的训练状态
+
+#### Attributes
 
 |           属性           |   类型   | 初始值  |   描述   |
 |:----------------------:|:------:|:----:|:------:|
@@ -408,6 +664,8 @@ SVM训练文件的绝对路径
 ### class SVM
 
 [`SVM`](#class-SVM)提供了对SVM模型的封装，可以进行训练、预测、保存和加载等操作
+
+#### Attributes
 
 |       属性       |                                                                   类型                                                                   |  初始值   |    描述     |
 |:--------------:|:--------------------------------------------------------------------------------------------------------------------------------------:|:------:|:---------:|
@@ -555,6 +813,8 @@ SVM训练文件的绝对路径
 ### class Trainer
 
 [`Trainer`](#class-Trainer)封装了一些用于训练SVM和神经网络的API。它提供了程序终止时自动保存训练结果等有用的功能。
+
+#### Attributes
 
 |         属性         |                                                              类型                                                               |          初始值          |                                                   描述                                                    |
 |:------------------:|:-----------------------------------------------------------------------------------------------------------------------------:|:---------------------:|:-------------------------------------------------------------------------------------------------------:|
