@@ -16,7 +16,7 @@
 
     - `directory` `model`
         - 训练好的神经网络模型
-- `package` [`src`](#package-src)
+- `package` `src`
     - 源代码
     - `module` `__init__.py`
     - `module` `tfidf_svm.py`
@@ -56,8 +56,6 @@
     - `directory` `data`
 
 ---
-
-# package src
 
 # package src.utils
 
@@ -1169,3 +1167,4 @@ $$
 [源代码](src/utils/typecheck.py)
 
 > Notes: 此部分的文档见[源代码](src/utils/typecheck.py)中的docstring。
+
