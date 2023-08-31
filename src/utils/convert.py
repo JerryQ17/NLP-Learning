@@ -205,7 +205,7 @@ class Converter:
 class Word2VecSequence(Sequence[Tensor]):
     """词向量序列"""
 
-    def __init__(self, word_tensor: Mapping[str, Tensor], cut_sentences: tuple[tuple[str]]):
+    def __init__(self, word_tensor: Mapping[str, Tensor], cut_sentences: Sequence[Sequence[str]]):
         self.__word_tensors = word_tensor
         self.__cut_sentences = cut_sentences
         self.__max_len = max(len(s) for s in self.__cut_sentences)
