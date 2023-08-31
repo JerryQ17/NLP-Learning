@@ -25,30 +25,30 @@
         - `package` [`utils`](#package-src.utils)
             - 底层API
             - `module` `__init__.py`
-            - `module` [`convert.py`](#convertpy)
+            - `module` [`convert.py`](#module-convertpy)
                 - `enum` [`UniqueWords`](#enum-UniqueWords)
                 - `class` [`Converter`](#class-Converter)
                 - `class` [`Word2VecSequence`](#class-Word2VecSequence)
-            - `module` [`dataset.py`](#datasetpy)
+            - `module` [`dataset.py`](#module-datasetpy)
                 - `class` [`_SplittableDataset`](#class-_SplittableDataset)
                 - `class` [`IMDBDataset`](#class-IMDBDataset)
                 - `class` [`TfIdfDataset`](#class-TfIdfDataset)
                 - `class` [`Word2VecDataset`](#class-Word2VecDataset)
-            - `module` [`lstm.py`](#lstmpy)
+            - `module` [`lstm.py`](#module-lstmpy)
                 - `class` [`TextClassifier`](#class-TextClassifier)
                 - `class` [`SelfAttention`](#class-SelfAttention)
-            - `module` [`models.py`](#modelspy)
+            - `module` [`models.py`](#module-modelspy)
                 - `class` [`GridResult`](#class-GridResult)
                 - `class` [`SVMTrainingState`](#class-SVMTrainingState)
                 - `class` [`NNTrainingState`](#class-NNTrainingState)
-            - `module` [`svm.py`](#svmpy)
+            - `module` [`svm.py`](#module-svmpy)
                 - `enum` [`SymType`](#enum-SymType)
                 - `enum` [`KernelType`](#enum-KernelType)
                 - `class` [`SVM`](#class-SVM)
-            - `module` `tensor.py`
-            - `module` [`train.py`](#trainpy)
+            - `module` [`tensor.py`](#module-tensorpy)
+            - `module` [`train.py`](#tmodule-rainpy)
                 - `class` [`Trainer`](#class-Trainer)
-            - `module` `typecheck.py`
+            - `module` [`typecheck.py`](#module-typecheckpy)
 - `directory` `svm`
     - `directory` `model`
     - `directory` `data`
@@ -59,7 +59,7 @@
 
 # package src.utils
 
-## convert.py
+## module convert.py
 
 [源代码](src/utils/convert.py)
 
@@ -238,7 +238,7 @@ SVM训练文件的绝对路径。
 
 ---
 
-## dataset.py
+## module dataset.py
 
 [源代码](src/utils/dataset.py)
 
@@ -545,7 +545,7 @@ SVM训练文件的绝对路径。
 
 ---
 
-## lstm.py
+## module lstm.py
 
 [源代码](src/utils/lstm.py)
 
@@ -637,7 +637,9 @@ SVM训练文件的绝对路径。
 以下是自注意力机制`Self-Attention`的公式：
 
 $$
+\begin{equation*}
 \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
+\end{equation*}
 $$
 
 其中，$Q$、$K$、$V$ 分别表示查询`Query`、键`Key`和值`Value`的向量表示，$d_k$ 是嵌入维度。通过计算查询和键的内积得到注意力权重，然后对值进行加权求和以得到最终的输出。这个注意力权重表示了查询和键之间的相似度，即指示了哪些键对于查询更加重要。
@@ -674,7 +676,7 @@ $$
 
 ---
 
-## models.py
+## module models.py
 
 [源代码](src/utils/models.py)
 
@@ -719,7 +721,7 @@ $$
 
 ---
 
-## svm.py
+## module svm.py
 
 [源代码](src/utils/svm.py)
 
@@ -866,32 +868,84 @@ $$
 
 ##### 输入
 
-|        参数        |   类型    |                初始值                |                                           描述                                            |
-|:----------------:|:-------:|:---------------------------------:|:---------------------------------------------------------------------------------------:|
-|  `problem_path`  |  `str`  |              `None`               |                                     标准libsvm格式训练集路径                                     |
-|     `n_fold`     |  `int`  |                `5`                |                                         交叉验证折数                                          |
-| `enable_logging` | `bool`  |              `False`              |                                        是否打印搜索进度                                         |
-|     `c_min`      | `float` |              `1e-8`               |                                        Cost的最小值                                         |
-|     `c_max`      | `float` |               `1e8`               |                                        Cost的最大值                                         |
-|     `c_step`     | `float` |               `10`                |                                         Cost的步长                                         |
-|     `g_min`      | `float` |              `1e-8`               |                                        gamma的最小值                                        |
-|     `g_max`      | `float` |               `1e8`               |                                        gamma的最大值                                        |
-|     `g_step`     | `float` |               `10`                |                                        gamma的步长                                         |
+|       参数       |  类型   |              初始值               |                             描述                             |
+| :--------------: | :-----: | :-------------------------------: | :----------------------------------------------------------: |
+|  `problem_path`  |  `str`  |              `None`               |                   标准libsvm格式训练集路径                   |
+|     `n_fold`     |  `int`  |                `5`                |                         交叉验证折数                         |
+| `enable_logging` | `bool`  |              `False`              |                       是否打印搜索进度                       |
+|     `c_min`      | `float` |              `1e-8`               |                         Cost的最小值                         |
+|     `c_max`      | `float` |               `1e8`               |                         Cost的最大值                         |
+|     `c_step`     | `float` |               `10`                |                          Cost的步长                          |
+|     `g_min`      | `float` |              `1e-8`               |                        gamma的最小值                         |
+|     `g_max`      | `float` |               `1e8`               |                        gamma的最大值                         |
+|     `g_step`     | `float` |               `10`                |                         gamma的步长                          |
 |    `detailed`    | `bool`  |              `False`              | 是否返回详细信息<br/>`detailed = True`时，返回所有搜索结果的列表，并绘制结果图像<br/>`detailed = False`时，只返回准确度最高的结果 |
-|    `img_name`    |  `str`  | `r'..\svm\train\grid_result.png'` |                                         保存的图片名                                          |
-|      `dpi`       |  `int`  |              `1000`               |                                         图片的dpi                                          |
-|  `from_record`   | `bool`  |              `False`              |                                       是否从记录文件中读取                                        |
-|  `record_path`   |  `str`  |              `None`               |                                         记录文件路径                                          |
+|    `img_name`    |  `str`  | `r'..\svm\train\grid_result.png'` |                         保存的图片名                         |
+|      `dpi`       |  `int`  |              `1000`               |                          图片的dpi                           |
+|  `from_record`   | `bool`  |              `False`              |                     是否从记录文件中读取                     |
+|  `record_path`   |  `str`  |              `None`               |                         记录文件路径                         |
 
 ##### 输出
 
 `detailed = True`时，返回所有搜索结果的列表，并绘制结果图像
 `detailed = False`时，只返回准确度最高的结果
 
+---
+
+## module tensor.py
+
+[源代码](src/utils/tensor.py)
+
+### func randn_tensor_within_norm()
+
+生成一个范数不超过给定值的随机张量
+
+#### 输入
+
+|  参数   |                             类型                             |   初始值   |       描述        |
+| :-----: | :----------------------------------------------------------: | :--------: | :---------------: |
+| `*size` |                            `int`                             | `Required` |     张量形状      |
+| `norm`  | [`torch.Tensor`](https://pytorch.org/docs/stable/tensors.html#torch.Tensor) | `Required` |     张量范数      |
+|   `p`   |                           `float`                            |    `2`     | 计算张量范数的p值 |
+
+#### 输出
+
+不超过给定值的随机张量
+
+### func random_tensors_outside_existed_tensors()
+
+生成一个或多个与已有张量距离足够远的张量，计算公式如下：
+$$
+\begin{cases*}
+T_{average} = \frac{1}{n} \sum_{i=1}^{n} Tensor_i\\
+T_{farthest} = \arg\max_{T_i} \|T_i - T_{average}\|_p\\
+radius = \|T_{farthest} - T_{average}\|_p\\
+unit = \frac{T_{farthest} - T_{average}}{radius}\\
+T_{origin}= T_{average} + radius * dist\_ratio * unit\\
+T_{random} = T_{origin} + T_{direction},\text{where }\frac{\|T_{direction} - T_{origin}\|_p\\}{radius} \le rand\_ratio
+\end{cases*}
+$$
+其中，$T_{random}$是输出的结果。
+
+#### 输入
+
+|     参数     |                             类型                             |   初始值   |                             描述                             |
+| :----------: | :----------------------------------------------------------: | :--------: | :----------------------------------------------------------: |
+|  `*tensor`   | [`torch.Tensor`](https://pytorch.org/docs/stable/tensors.html#torch.Tensor) | `Required` |                           已有张量                           |
+|    `num`     |                            `int`                             |    `1`     | 生成张量的个数，当`num`为1时返回一个张量，否则返回一个堆叠张量 |
+|     `p`      |                           `float`                            |    `2`     |                      计算张量范数的p值                       |
+| `dist_ratio` |                           `float`                            |    `2`     | 生成张量的生成原点距离已有张量的平均值与已有张量的最大距离与已有张量的平均值的距离的比值 |
+| `rand_ratio` |                           `float`                            |   `0.5`    |         生成张量的随机部分与已有张量的最大距离的比值         |
+
+#### 输出
+
+`num = 1`时，$T_{random}$
+`num > 1`时，$Tensor[\underbrace{T_{random}, \cdots}_{num}]$
+
 
 ---
 
-## train.py
+## module train.py
 
 [源代码](src/utils/train.py)
 
@@ -1020,3 +1074,9 @@ $$
 ##### 输出
 
 这个实例自身，即`self`
+
+---
+
+## module typecheck.py
+
+[源代码](src/utils/typecheck.py)
