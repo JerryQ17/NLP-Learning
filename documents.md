@@ -2,37 +2,72 @@
 
 ## 项目结构
 
+- `module` `__init__.py`
+- `module` `main.py`
+- `file` `README.md`
+- `file` `documents.md`
+- `directory` `autosave`
+    - 自动保存的训练状态
 - `directory` `dataset`
+    - 原始数据集
     - `file` `IMDB Dataset.csv`
 - `directory` `lstm`
-- `directory` `src`
-    - `file` `__init__.py`
-    - `file` [`convert.py`](#convertpy)
-        - class [`Converter`](#class-Converter)
-    - `file` [`dataset.py`](#datasetpy)
-        - `class` [`IMDBDataset`](#class-IMDBDataset)
-        - `class` [`TfIdfDataset`](#class-TfIdfDataset)
-    - `file` [`lstm.py`](#lstmpy)
-        - `class` [`LSTMModel`](#class-LSTMModel)
-    - `file` [`models.py`](#modelspy)
-        - `class` [`Review`](#class-Review)
-        - `class` [`GridResult`](#class-GridResult)
-        - `class` [`NNTrainingState`](#class-NNTrainingState)
-    - `file` [`svm.py`](#svmpy)
-        - `class` [`SymType`](#class-SymType)
-        - `class` [`KernelType`](#class-KernelType)
-        - `class` [`SVM`](#class-SVM)
-    - `file` [`train.py`](#trainpy)
-        - `class` [`Trainer`](#class-Trainer)
+    - 与神经网络有关的文件
+
+    - `directory` `model`
+        - 训练好的神经网络模型
+- `package` [`src`](#package-src)
+    - 源代码
+    - `module` `__init__.py`
+    - `module` `tfidf_svm.py`
+    - `module` `tfidf_lstm.py`
+    - `module` `word2vec_lstm.py`
+        - `package` [`utils`](#package-src.utils)
+            - 底层API
+            - `module` `__init__.py`
+            - `module` [`convert.py`](#convertpy)
+                - `enum` [`UniqueWords`](#enum-UniqueWords)
+                - `class` [`Converter`](#class-Converter)
+                - `class` [`Word2VecSequence`](#class-Word2VecSequence)
+            - `module` [`dataset.py`](#datasetpy)
+                - `class` [`IMDBDataset`](#class-IMDBDataset)
+                - `class` [`TfIdfDataset`](#class-TfIdfDataset)
+            - `module` [`lstm.py`](#lstmpy)
+                - `class` [`LSTMModel`](#class-LSTMModel)
+            - `module` [`models.py`](#modelspy)
+                - `class` [`GridResult`](#class-GridResult)
+                - `class` [`SVMTrainingState`](#class-SVMTrainingState)
+                - `class` [`NNTrainingState`](#class-NNTrainingState)
+            - `module` [`svm.py`](#svmpy)
+                - `enum` [`SymType`](#enum-SymType)
+                - `enum` [`KernelType`](#enum-KernelType)
+                - `class` [`SVM`](#class-SVM)
+            - `module` `tensor.py`
+            - `module` [`train.py`](#trainpy)
+                - `class` [`Trainer`](#class-Trainer)
+            - `module` `typecheck.py`
 - `directory` `svm`
     - `directory` `model`
     - `directory` `data`
 
 ---
 
+# package src
+
+# package src.utils
+
 ## convert.py
 
-[源代码](./src/convert.py)
+[源代码](src/utils/convert.py)
+
+### enum UniqueWords
+
+[`UniqueWords`](#enum-UniqueWords)是`str`类型的枚举，提供了词汇表中填充词和未知词的索引。
+
+|   类型    |     值      |
+| :-------: | :---------: |
+| `PADDING` | `<PADDING>` |
+| `UNKNOWN` | `<UNKNOWN>` |
 
 ### class Converter
 
@@ -40,26 +75,29 @@
 
 > Tips:[`tfidf_matrix`](#Converter-tfidf-matrix)、[`feature_names`](#Converter-feature-names)、[`tfidf_dataset`](#Converter-tfidf-dataset)属性无需显式调用[`tfidf()`](#method-tfidf())方法，内部会自动调用。即使你改变了[`dataset`](#Converter-dataset)属性，这些属性也会自动更新。
 
-|                         属性                          |                                                         类型                                                         |                                                   初始值                                                   |                              描述                               |
-|:---------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------:|:-------------------------------------------------------------------------------------------------------:|:-------------------------------------------------------------:|
-|       <a id="Converter-dataset">`dataset`</a>       | [`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html?highlight=dataset#torch.utils.data.Dataset) |                                               `Required`                                                |                            要转换的数据集                            |
-|                     `processes`                     |                                                       `int`                                                        | [`os.cpu_count()`](https://docs.python.org/zh-cn/3/library/os.html?highlight=os cpu_count#os.cpu_count) |                          多进程并行处理的进程数                          |
-|  <a id="Converter-tfidf-matrix">`tfidf_matrix`</a>  |   [`scipy.sparse.csr_matrix`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html)   |                                                    /                                                    |          [`dataset`](#Converter-dataset)的`tfidf`值矩阵           |
-| <a id="Converter-feature-names">`feature_names`</a> |               [`numpy.ndarray`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html)               |                                                    /                                                    |             [`dataset`](#Converter-dataset)的特征单词              |
-|                       `items`                       |                                                       `list`                                                       |                                                    /                                                    |             [`dataset`](#Converter-dataset)中的所有元素             |
-|                  `items_generator`                  |                                                    `Generator`                                                     |                                                    /                                                    |           [`dataset`](#Converter-dataset)中的所有元素的生成器           |
-| <a id="Converter-tfidf-dataset">`tfidf_dataset`</a> |                                   [`dataset.TfIdfDataset`](#class-TfIdfDataset)                                    |                                                    /                                                    | 包含了[`dataset`](#Converter-dataset)的`tfidf`和`label`的数据集，用于后续训练 |
+|        属性         |                             类型                             |            初始值             |                             描述                             |
+| :-----------------: | :----------------------------------------------------------: | :---------------------------: | :----------------------------------------------------------: |
+|      `logger`       | [`logging.Logger`](https://docs.python.org/zh-cn/3.10/library/logging.html?highlight=logging%20logger#logging.Logger) | `logging.getLogger(__name__)` |                          日志记录器                          |
+|      `dataset`      |    [`src.utils.dataset.IMDBDataset`](#class-IMDBDataset)     |          `Required`           |                        要转换的数据集                        |
+|     `processes`     |                            `int`                             |              `1`              | 多进程处理的进程数<br/>取值范围为[`0`, [`os.cpu_count()`](https://docs.python.org/zh-cn/3.10/library/os.html?highlight=os%20cpu_count#os.cpu_count)] |
+|   `tfidf_matrix`    | [`scipy.sparse.csr_matrix`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html) |               /               |               `self.dataset`的`tfidf`稀疏矩阵                |
+|   `feature_names`   | [`numpy.ndarray`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) |               /               |                   `self.dataset`的特征单词                   |
+| `reviews_generator` |                 `Generator[str, None, None]`                 |               /               |              `self.dataset`中的`review`的生成器              |
+|    `reviews_cut`    |                `tuple[tuple[str, ...], ...]`                 |               /               |                    `review`的NLTK分词结果                    |
+| `labels_generator`  |                `Generator[float, None, None]`                |               /               |              `self.dataset`中的`label`的生成器               |
+|   `tfidf_dataset`   |   [`src.utils.dataset.TfIdfDataset`](#class-TfIdfDataset)    |               /               |        包含了`self.dataset`的`tfidf`和`label`的数据集        |
+| `word2vec_dataset`  | [`src.utils.dataset.Word2VecDataset`](#class-Word2VecDataset) |               /               |        包含了`self.dataset`的词向量和`label`的数据集         |
 
 #### method \_\_init__()
 
-初始化一个[`Converter`](#class-Converter)实例
+初始化一个[`Converter`](#class-Converter)实例。
 
 ##### 输入
 
-|     参数      |                                                         类型                                                         |                                                   初始值                                                   |       描述       |
-|:-----------:|:------------------------------------------------------------------------------------------------------------------:|:-------------------------------------------------------------------------------------------------------:|:--------------:|
-|  `dataset`  | [`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html?highlight=dataset#torch.utils.data.Dataset) |                                               `Required`                                                |    要转换的数据集     |
-| `processes` |                                                       `int`                                                        | [`os.cpu_count()`](https://docs.python.org/zh-cn/3/library/os.html?highlight=os cpu_count#os.cpu_count) | `to_svm`方法的进程数 |
+|    参数     |                             类型                             |                            初始值                            |         描述         |
+| :---------: | :----------------------------------------------------------: | :----------------------------------------------------------: | :------------------: |
+|  `dataset`  | [`torch.utils.data.Dataset`](https://pytorch.org/docs/stable/data.html?highlight=dataset#torch.utils.data.Dataset) |                          `Required`                          |    要转换的数据集    |
+| `processes` |                            `int`                             | [`os.cpu_count()`](https://docs.python.org/zh-cn/3.10/library/os.html?highlight=os%20cpu_count#os.cpu_count) | `to_svm`方法的进程数 |
 
 ##### 输出
 
@@ -67,7 +105,103 @@
 
 #### method tfidf()
 
-计算数据集的TF-IDF表示，同时更新自身的[`tfidf_matrix`](#Converter-tfidf-matrix)、[`feature_names`](#Converter-feature-names)、[`tfidf_dataset`](#Converter-tfidf-dataset)属性，返回[`tfidf_dataset`](#Converter-tfidf-dataset)
+使用[` sklearn.feature_extraction.text.TfidfVectorizer`](https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html)计算数据集的TF-IDF表示，并更新`self.tfidf_matrix`、`self.feature_names`、`self.tfidf_dataset`属性。
+
+##### 输入
+
+|   参数   |       类型       | 初始值 |                             描述                             |
+| :------: | :--------------: | :----: | :----------------------------------------------------------: |
+| `kwargs` | `dict[str, Any]` | `None` | 关键字参数，用于初始化[`TfidfVectorizer`](https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html)，可选参数请查阅其文档 |
+
+##### 输出
+
+`self.tfidf_dataset`
+
+#### method word2vec()
+
+首先加载`nltk`的`punkt`分词器，使用[`nltk.word_tokenize`](https://www.nltk.org/api/nltk.tokenize.word_tokenize.html?highlight=word_tokenize#nltk.tokenize.word_tokenize)对原始数据集中的句子进行分词，然后使用[`gensim.models.word2vec.Word2Vec`](https://radimrehurek.com/gensim/models/word2vec.html#gensim.models.word2vec.Word2Vec)计算分词的词向量并转换成张量([`torch.Tensor`](https://pytorch.org/docs/stable/tensors.html#torch.Tensor))，并调用`src.utils.tensor.random_tensors_outside_existed_tensors`函数生成两个距离所有有效词向量足够远的张量(此处的距离指欧几里得距离)，分别作为填充张量和未知单词(不在单词表里的单词)的张量并存入单词表，最后创建并返回`self.word2vec_dataset。`
+
+> **Warning**: 一般情况下不应该指定`sentences`的值。如果你改变了`sentences`的值，将会基于指定的句子计算的词向量，而不是预期的`self.dataset`中的句子。
+
+> Notes: 你可以指定`workers`的值，其默认值是`self.processes`。
+
+##### 输入
+
+|   参数   |       类型       | 初始值 |                             描述                             |
+| :------: | :--------------: | :----: | :----------------------------------------------------------: |
+| `kwargs` | `dict[str, Any]` | `None` | 关键字参数，用于初始化[`Word2Vec`](https://radimrehurek.com/gensim/models/word2vec.html#gensim.models.word2vec.Word2Vec)<br/>`sentences`和`workers`有如上所述的默认值，其它可选参数请查阅其文档 |
+
+##### 输出
+
+`self.word2vec_dataset`
+
+#### method tfidf_to_svm()
+
+将`self.dataset`中的原始数据转换成`tfidf`矩阵（如果没有转换过的话），并将`tfidf`矩阵存储为标准`libsvm`格式，返回该文件的绝对路径。
+
+##### 输入
+
+|    参数     | 类型  | 初始值 |                             描述                             |
+| :---------: | :---: | :----: | :----------------------------------------------------------: |
+| `save_path` | `str` | `None` | 保存路径，默认保存在`'.\svm\data`文件夹，实际保存路径见方法返回值 |
+
+##### 输出
+
+SVM训练文件的绝对路径
+
+#### method word2vec_to_svm()
+
+**NOT IMPLEMENTED**
+
+**WON'T FIX**
+
+> **Warning**: 在某次`git commit`中，我大幅修改了`word2vec()`方法的实现，导致原有的`word2vec_to_svm()`方法与现有的词向量存储方式不兼容。
+> 由于时间原因，使用词向量训练支持向量机的实验部分已被删除，因此该方法将不会适配现有的词向量存储方式。
+>
+> 目前，调用本方法将会抛出`NotImplementedError`。
+
+将`self.dataset`中的原始数据转换成词向量（如果没有转换过的话），并将词向量存储为标准`libsvm`格式，返回该文件的绝对路径。
+
+##### 输入
+
+|    参数     | 类型  | 初始值 |                             描述                             |
+| :---------: | :---: | :----: | :----------------------------------------------------------: |
+| `save_path` | `str` | `None` | 保存路径，默认保存在`'.\svm\data`文件夹，实际保存路径见方法返回值 |
+
+##### 输出
+
+SVM训练文件的绝对路径
+
+### class Word2VecSequence
+
+> Note: 类`Word2VecSequence`仅供内部使用，用户无需创建其实例。
+
+[`Word2VecSequence`](#class-Word2VecSequence)是[`collection.abc.Sequence`](https://docs.python.org/zh-cn/3.10/library/collections.abc.html#collections.abc.Sequence)的子类，其元素为一个词向量(准确的来说，是一个二维张量，形状为`(最大句子长度, 词张量维数)`)。
+
+由于各个句子长短不一，将它们同时转换成相同长度的二维张量并存储，将会占用大量内存。以`IMDB Dataset`为例，当词向量维数取默认值`100`时，最终的所有以张量形式表示的句子理论上将会占用`46GB`的内存，如果直接运行程序而不加以改进，将会导致电脑严重卡顿，甚至蓝屏死机，这显然是不可接受的。
+
+因此，在存储这些张量时，我借鉴了生成器(`Generator`)的思想，以时间换空间。在类的内部，实际上存储的是单词表、所有句子的分词结果、计算句子张量的算法。每次获取元素时，根据单词表和句子的分词计算对应的句子张量。在程序运行时，经粗略估算，其实际内存占用仅约`1GB`，相较于之前`46GB`的理论占用，节省内存的效果显著。
+
+该类无公共属性。
+
+#### method \_\_init__()
+
+初始化一个[`Word2VecSequence`](#class-Word2VecSequence)实例。
+
+##### 输入
+
+|      参数       |           类型            |   初始值   |                             描述                             |
+| :-------------: | :-----------------------: | :--------: | :----------------------------------------------------------: |
+|  `word_tensor`  |  `Mapping[str, Tensor]`   | `Required` | 单词表，一个从字符串到张量的映射(`Mapping`)，其中应该包括[`UniqueWords`](#enum-UniqueWords)中的元素 |
+| `cut_sentences` | `Sequence[Sequence[str]]` | `Required` |              分词结果，形状是`(句子数, 分词数)`              |
+
+##### 输出
+
+`None`
+
+#### method \_\_len__()
+
+获得该实例的长度
 
 ##### 输入
 
@@ -75,36 +209,29 @@
 
 ##### 输出
 
-一个[`dataset.TfIdfDataset`](#class-TfIdfDataset)实例，其实就是[`self.tfidf_dataset`](#Converter-tfidf-dataset)
+总句子数量
 
-#### method word2vec()
+#### method \_\_getitem__()
 
-**TODO**
-
-##### 输入
-
-##### 输出
-
-#### method to_svm()
-
-将[`dataset`](#Converter-dataset)中的原始数据转换成`tfidf`矩阵（如果没有转换过的话），并将`tfidf`矩阵存储为标准`libsvm`
-格式，返回文件保存的绝对路径
+通过索引获取一个或多个句子的张量表示，已填充至相同长度。
 
 ##### 输入
 
-|     参数      |  类型   |  初始值   |                   描述                    |
-|:-----------:|:-----:|:------:|:---------------------------------------:|
-| `save_path` | `str` | `None` | 保存路径，默认保存在`'..\svm\data`文件夹，实际保存文件名见返回值 |
+|  参数  |     类型      |   初始值   |                   描述                   |
+| :----: | :-----------: | :--------: | :--------------------------------------: |
+| `item` | `int | slice` | `Required` | 要获取张量的句子的索引，可以是整数或切片 |
 
 ##### 输出
 
-文件保存的绝对路径
+当输入为一个整数时，返回一个二维张量，形状为`(最大句子长度, 词张量维度)`
+
+当输入为一个切片时，返回一个三维张量，形状为`(切片长度, 最大句子长度, 词张量维度)`
 
 ---
 
 ## dataset.py
 
-[源代码](./src/dataset.py)
+[源代码](src/utils/dataset.py)
 
 ### class IMDBDataset
 
@@ -171,7 +298,7 @@
 
 ## lstm.py
 
-[源代码](./src/lstm.py)
+[源代码](src/utils/lstm.py)
 
 ### class LSTMModel
 
@@ -214,32 +341,32 @@
 
 ## models.py
 
-[源代码](./src/models.py)
+[源代码](src/utils/models.py)
 
-### class Review
-
-[`Review`](#class-Review)继承了[`pydantic.BaseModel`](https://docs.pydantic.dev/1.10/usage/models/)，一个[`Review`](#class-Review)实例描述了一个电影评论
-
-|     属性      |   类型   |    初始值     |  描述  |
-|:-----------:|:------:|:----------:|:----:|
-|  `review`   | `str`  | `Required` | 评论内容 |
-| `sentiment` | `bool` | `Required` | 情感标签 |
+> **Warning**: 本模块使用的是[**Pydantic1.10**](https://docs.pydantic.dev/1.10/)，与目前的最新版本[Pydantic2.3](https://docs.pydantic.dev/2.3/)**不兼容**，如果你按照[README.md](README.md)中的指令安装项目依赖，则不需要担心版本兼容问题，如果你自行安装了所有依赖，请确保你安装的Pydantic版本**小于**2.0，否则代码将不能运行。
 
 ### class GridResult
 
-[`GridResult`](#class-GridResult)继承了[`pydantic.BaseModel`](https://docs.pydantic.dev/1.10/usage/models/)，一个[`GridResult`](#class-GridResult)实例描述了一个网格搜索的结果
+[`GridResult`](#class-GridResult)继承了[`pydantic.BaseModel`](https://docs.pydantic.dev/1.10/usage/models/)，描述了网格搜索的结果
 
-|   属性    |   类型    |    初始值     |    描述     |
-|:-------:|:-------:|:----------:|:---------:|
-| `c_min` | `float` | `Required` |   惩罚系数    |
-| `c_max` | `float` | `Required` | 惩罚系数乘以步进  |
-| `g_min` | `float` | `Required` |   核函数参数   |
-| `g_max` | `float` | `Required` | 核函数参数乘以步进 |
-| `rate`  | `float` | `Required` |    准确率    |
+|    属性    |  类型   |   初始值   |    描述    |
+| :--------: | :-----: | :--------: | :--------: |
+|    `c`     | `float` | `Required` |  惩罚系数  |
+|    `g`     | `float` | `Required` | 核函数参数 |
+| `accuracy` | `float` | `Required` |   准确率   |
+
+### class SVMTrainingState
+
+[`SVMTrainingState`](#class-SVMTrainingState)继承了[`pydantic.BaseModel`](https://docs.pydantic.dev/1.10/usage/models/)，描述了支持向量机的训练状态
+
+|      属性       |               类型                |  初始值   |     描述     |
+| :-------------: | :-------------------------------: | :-------: | :----------: |
+| `current_range` | `tuple[tuple[float, float], ...]` | `tuple()` | 当前训练范围 |
+|    `results`    |        `tuple[GridResult]`        |   `[]`    | 网格搜索结果 |
 
 ### class NNTrainingState
 
-[`NNTrainingState`](#class-NNTrainingState)继承了[`pydantic.BaseModel`](https://docs.pydantic.dev/1.10/usage/models/)，一个[`NNTrainingState`](#class-NNTrainingState)实例描述了一个神经网络训练的状态
+[`NNTrainingState`](#class-NNTrainingState)继承了[`pydantic.BaseModel`](https://docs.pydantic.dev/1.10/usage/models/)，描述了神经网络的训练状态
 
 |           属性           |   类型   | 初始值  |   描述   |
 |:----------------------:|:------:|:----:|:------:|
@@ -253,9 +380,9 @@
 
 ## svm.py
 
-[源代码](./src/svm.py)
+[源代码](src/utils/svm.py)
 
-### class SymType
+### enum SymType
 
 [`SymType`](#class-SymType)是`int`类型的枚举，提供了5种SVM类型
 
@@ -267,7 +394,7 @@
 |  `EPSILON_SVR`  | `3` |
 |    `NU_SVR`     | `4` |
 
-### class KernelType
+### enum KernelType
 
 [`KernelType`](#class-KernelType)是`int`类型的枚举，提供了5种核函数类型
 
@@ -423,7 +550,7 @@
 
 ## train.py
 
-[源代码](./src/train.py)
+[源代码](src/utils/train.py)
 
 ### class Trainer
 
