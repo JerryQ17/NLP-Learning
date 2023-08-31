@@ -1167,3 +1167,5 @@ $$
 ## module typecheck.py
 
 [源代码](src/utils/typecheck.py)
+
+> Notes: 此部分的文档见[源代码](src/utils/typecheck.py)中的docstring。
