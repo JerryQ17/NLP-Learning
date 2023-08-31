@@ -29,12 +29,12 @@ class _SplittableDataset(Dataset, Sized, ABC):
         """将索引映射到根集"""
         return index if self._is_root else self._parent._mapping_index(self._indexs[index])
 
-    def _mapping_data(self, data: str):
-        """将数据映射到根集"""
-        return getattr(self, data) if self._is_root else self._parent._mapping_data(data)
+    def _mapping_attr(self, attr: str):
+        """将属性映射到根集"""
+        return getattr(self, attr) if self._is_root else self._parent._mapping_attr(attr)
 
-    def _get(self, data: str, index: int):
-        return self._mapping_data(data)[self._mapping_index(index)]
+    def _get(self, attr: str, index: int):
+        return self._mapping_attr(attr)[self._mapping_index(index)]
 
     def _create_and_init_subset_with_data(self: __T,
                                           *index: int,
@@ -100,7 +100,7 @@ class IMDBDataset(_SplittableDataset):
     @property
     def items(self):
         """所有项"""
-        return self._items if self._is_root else tuple(self._mapping_data('_items')[i] for i in self._indexs)
+        return self._items if self._is_root else tuple(self._mapping_attr('_items')[i] for i in self._indexs)
 
     def _read(self) -> tuple[tuple[str, float]]:
         """读取数据"""
@@ -145,12 +145,12 @@ class TfIdfDataset(_SplittableDataset):
     @property
     def values(self) -> csr_matrix:
         """TF-IDF值"""
-        return self._values if self._is_root else self._mapping_data('_values')[array(self._indexs)]
+        return self._values if self._is_root else self._mapping_attr('_values')[array(self._indexs)]
 
     @property
     def labels(self) -> Tensor:
         """标签"""
-        return self._labels if self._is_root else self._mapping_data('_labels')[Tensor(self._indexs)]
+        return self._labels if self._is_root else self._mapping_attr('_labels')[Tensor(self._indexs)]
 
     def get_subset(self, *index: int) -> 'TfIdfDataset':
         """获取数据集中的某一子集"""
@@ -167,7 +167,7 @@ class Word2VecDataset(_SplittableDataset):
         labels: 标签，一维张量，[句子数]
     """
 
-    def __init__(self, values: Sequence[Tensor], labels: Tensor, pad_tensor: Tensor):
+    def __init__(self, values: Sequence[Tensor], labels: Tensor):
         super().__init__()
         typecheck.TypeCheck(Sequence)(values)
         typecheck.TypeCheck(Tensor)(labels, extra_checks=[
@@ -176,8 +176,6 @@ class Word2VecDataset(_SplittableDataset):
         ])
         self._values = values
         self._labels = labels
-        self.__max_len = max(len(value) for value in values)
-        self.__pad_tensor = pad_tensor
 
     def __len__(self):
         return len(self._labels) if self._is_root else len(self._indexs)
@@ -188,16 +186,14 @@ class Word2VecDataset(_SplittableDataset):
     @property
     def values(self) -> Sequence[Tensor]:
         """词向量"""
-        return self._values if self._is_root else tuple(self._mapping_data('_values')[i] for i in self._indexs)
+        return self._values if self._is_root else tuple(self._mapping_attr('_values')[i] for i in self._indexs)
 
     @property
     def labels(self) -> Tensor:
         """标签"""
-        return self._labels if self._is_root else self._mapping_data('_labels')[Tensor(self._indexs)]
+        return self._labels if self._is_root else self._mapping_attr('_labels')[Tensor(self._indexs)]
 
     def get_subset(self, *index: int) -> 'Word2VecDataset':
         """获取数据集中的某一子集"""
         subset = self._create_and_init_subset_with_data(*index)
-        subset.__max_len = self.__max_len
-        subset.__pad_tensor = self.__pad_tensor
         return subset
