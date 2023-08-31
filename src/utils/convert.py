@@ -159,7 +159,7 @@ class Converter:
         # 生成数据集
         self.__word2vec_dataset = Word2VecDataset(
             Word2VecSequence(self.__word_tensors, self.__reviews_cut),
-            Tensor(tuple(self.labels_generator)), pad_tensor
+            Tensor(tuple(self.labels_generator))
         )
         return self.__word2vec_dataset
 
