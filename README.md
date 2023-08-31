@@ -141,6 +141,10 @@ deactivate
 
 ## 实验过程
 
+> Notes: 此部分并不讨论与代码实现有关的内容，仅就模型超参数的选取以及训练过程展开描述。
+>
+> 如果读者对技术细节以及代码实现感兴趣，可以移步[文档](documents.md)或直接查看源代码。如有疑问，可在[Github](https://github.com/JerryQ17/NLP-Learning)提出Issue。
+
 ### TF-IDF
 
 #### SVM
@@ -150,6 +154,8 @@ deactivate
 然而，在筛选过程中，我选择的网格搜索的范围[10^-8^, 10^8^]过大，导致计算时间过长（一个星期还没算完），计算期间因为一次意外情况导致程序意外终止，在我此前备份的计算结果中，`cost=1,gamma=1`组合的准确率最高，所以我最终只能选择这个参数组合训练SVM。
 
 模型保存于[`.\svm\model\svm_model0_c_1.0_g_1.0.model`](.\svm\model\svm_model0_c_1.0_g_1.0.model)(未上传GitHub)
+
+> PS: 此次意外也促使我实现了自动保存的功能，不过该功能未经测试，尚不清楚该功能是否有效。
 
 #### LSTM
 
@@ -185,7 +191,7 @@ nn.Sequential(
 
 ### Word to Vec
 
-由于时间原因，只做了LSTM部分的实验
+由于时间原因，只做了LSTM部分的实验。
 
 #### LSTM
 
@@ -218,6 +224,8 @@ nn.Sequential(
 训练终止于第28轮。因为这次训练的目的是测试，所以没有测量评估集上的准确率。
 
 训练集和评估集上的损失值曲线如图所示：
+
+> Notes: 我改进了损失值曲线的计算方法，将一次训练的所有损失值取平均值，得到的图像更清晰明了，但可能损失某些细节。
 
 ![es-test-loss](./assets/es-test-loss.png)
 
@@ -255,4 +263,167 @@ nn.Sequential(
 
 ### Word to Vec
 
-没做
+我随机选取数据分别作为训练集、验证集、测试集，比例为7:1:2。具体数据见表：
+
+| 数据集 | 正面数据 | 负面数据 |
+| :----: | :------: | :------: |
+| 训练集 |  17547   |  17543   |
+| 验证集 |   2500   |   2500   |
+| 测试集 |   4953   |   5047   |
+
+#### 似乎不太成功的尝试
+
+一开始，我先选取了6个超参数组合，训练均使用早停法，`patience=5`，测试结果如下：
+
+```python
+TextClassifier(input_size=100, hidden_size=100, num_layers=1, fc=nn.Linear(100, 2))
+```
+
+![w2v_model0](./assets/w2v_model0.png)
+
+模型0于第11轮训练结束后终止训练，准确率`50.36%`，保存于[`.\lstm\model\w2v_model0.pth`](.\lstm\model\w2v_model0.pth)(未上传GitHub)。
+
+```python
+TextClassifier(
+    input_size=100, hidden_size=100, num_layers=1,
+    fc=nn.Sequential(
+		nn.Linear(100, 50),
+		nn.ReLU(),
+		nn.Linear(50, 2)
+))
+```
+
+![w2v_model1](./assets/w2v_model1.png)
+
+模型1于第6轮训练结束后终止训练，准确率`49.64%`，保存于[`.\lstm\model\w2v_model1.pth`](.\lstm\model\w2v_model1.pth)(未上传GitHub)。
+
+```python
+TextClassifier(input_size=100, hidden_size=144, num_layers=1, fc=nn.Linear(144, 2))
+```
+
+![w2v_model2](./assets/w2v_model2.png)
+
+模型2于第13轮训练结束后终止训练，准确率`50.36%`，保存于[`.\lstm\model\w2v_model2.pth`](.\lstm\model\w2v_model2.pth)(未上传GitHub)。
+
+```python
+TextClassifier(
+    input_size=100, hidden_size=144, num_layers=1,
+    fc=nn.Sequential(
+		nn.Linear(144, 72),
+		nn.ReLU(),
+		nn.Linear(72, 2)
+))
+```
+
+![w2v_model3](./assets/w2v_model3.png)
+
+模型3训练结束轮次未保存😆，准确率`49.64%`，保存于[`.\lstm\model\w2v_model3.pth`](.\lstm\model\w2v_model3.pth)(未上传GitHub)。
+
+```python
+TextClassifier(
+	input_size=100, hidden_size=144, num_layers=1,
+	fc=nn.Sequential(
+		nn.Linear(144, 100),
+		nn.ReLU(),
+		nn.Linear(100, 2)
+))
+```
+
+![w2v_model4](./assets/w2v_model4.png)
+
+模型4于第8轮训练结束后终止训练，准确率`49.64%`，保存于[`.\lstm\model\w2v_model4.pth`](.\lstm\model\w2v_model4.pth)(未上传GitHub)。
+
+```python
+TextClassifier(
+	input_size=100, hidden_size=144, num_layers=2,
+	fc=nn.Sequential(
+		nn.Linear(144, 100),
+		nn.ReLU(),
+		nn.Linear(100, 64),
+		nn.ReLU(),
+		nn.Linear(64, 2)
+))
+```
+
+![w2v_model5](./assets/w2v_model5.png)
+
+模型5于第14轮训练结束后终止训练，准确率`49.37%`，保存于[`.\lstm\model\w2v_model5.pth`](.\lstm\model\w2v_model5.pth)(未上传GitHub)。
+
+| 模型 | 训练次数 | 准确率 |
+| :--: | :------: | :----: |
+|  0   |    11    | 50.36% |
+|  1   |    6     | 49.64% |
+|  2   |    13    | 50.36% |
+|  3   |    😆     | 49.64% |
+|  4   |    8     | 49.64% |
+|  5   |    14    | 49.37% |
+
+从测试结果可以直接观察到一个非常有趣的现象，准确率几乎总是那几个数值(这是为什么呢？我也不知道🤔)。
+
+进一步分析数据可以得出一些结论：
+
+- `num_layers = 1`时，所有模型的训练集损失值最终都趋于收敛。
+  - 全连接层简单的模型的训练次数更多，正确率更高，评估集损失值曲线变化幅度较大。
+  - 全连接层复杂的模型的训练次数更少，正确率更低，评估集损失值曲线变化幅度较小。
+- `num_layers = 2`时(仅有一个样本，结论可能不准确)，训练集损失值稳定地收敛，而评估集损失值曲线变化幅度极大，经过较多次训练，正确率反而更低（训练耗时也很久🤣👉🤡）
+
+总的来看，这些超参数选择似乎不是特别理想，应该再挑选别的超参数组合进行尝试。
+
+#### Attention is all your need
+
+正当我思考该如何改进超参数的组合（~~网上冲浪~~）时，我看到了大名鼎鼎的注意力机制。既然"Attention is all your need"，那么我不妨检验一下它是否"meet my needs"。
+
+资料显示，自注意力(`Self Attention`)机制比较适合我的任务。于是我实现了一个叫做`SelfAttention`的`nn.Module`，并把它塞进了全连接层里，并开始测试：
+
+```python
+TextClassifier(
+	input_size=100, hidden_size=144, num_layers=1,
+	fc=nn.Sequential(
+		SelfAttention(144),
+		nn.Linear(144, 2)
+))
+```
+
+![w2v_model6](./assets/w2v_model6.png)
+
+模型6于第11轮训练结束后终止训练，准确率`49.37%`，保存于[`.\lstm\model\w2v_model6.pth`](.\lstm\model\w2v_model6.pth)(未上传GitHub)。
+
+结果显然出乎我的意料，我本以为注意力机制能大幅提高准确率，怎么落了个并列倒数第一呢？🤣👉🤡
+
+图像显示，早停法似乎控制模型在一次过拟合的训练不久后终止训练，我怀疑是`patience`太小的问题。
+
+由于时间原因，只能再训练一个模型了，于是我选择了一个激进的方案，并将`patience`调为`10`：
+
+```python
+TextClassifier(
+	input_size=100, hidden_size=144, num_layers=2,
+    fc=nn.Sequential(
+		SelfAttention(144),
+		nn.Linear(144, 100),
+		nn.ReLU(),
+		nn.Linear(100, 64),
+		nn.ReLU(),
+		nn.Linear(64, 2)
+))
+```
+
+![w2v_model7](./assets/w2v_model7.png)
+
+模型7于第23轮训练结束后终止训练，准确率`50.47%`，保存于[`.\lstm\model\w2v_model7.pth`](.\lstm\model\w2v_model7.pth)(未上传GitHub)。
+
+图像显示，大部分时候，训练集和评估集的损失值曲线几乎完全重合，评估集的损失值甚至略低一些，这也就意味着此次训练取得了良好的效果。不出所料，取得了目前最高的准确率（虽然只高一点点）。
+
+---
+
+## 实验总结
+
+> Notes: ~~都是废话，不用看~~
+
+### 不好的
+
+由于时间有限，算力有限，这次实验我只尝试改变了少量的超参数，也未能发挥出注意力机制的效果，实属遗憾。
+
+### 好的
+
+让我了解了如何处理自然语言，将文本用数学形式表示出来，让我入门了人工智能这一高深莫测的领域，感受到了神经网络的数学美（~~玄学美~~），对于`ndarray`和`Tensor`的学习也为接下来的线性代数打下了良好（？~~又不是我算的~~）的基础。
+
