@@ -262,9 +262,9 @@ SVM训练文件的绝对路径。
 >
 > ```python
 > class ExampleDataset(_SplittableDataset):
-> 	def __init__(self, data):
-> 		super.__init__()
-> 		self.data = data
+>     def __init__(self, data):
+>         super.__init__()
+>         self.data = data
 > 
 > 
 > >>> parent = ExampleDataset([1, 1, 4, 5, 1, 4])
@@ -279,11 +279,11 @@ SVM训练文件的绝对路径。
 >
 > ```python
 > class ExampleDataset(_SplittableDataset):
-> 	def __init__(self, data):
-> 		super.__init__()
-> 		self._data = data
+>     def __init__(self, data):
+>         super.__init__()
+>         self._data = data
 > 
-> 	@property
+>     @property
 >     def data(self):
 >         return self._mapping_attr("_data")
 > ```
@@ -373,9 +373,9 @@ SVM训练文件的绝对路径。
 >
 > ```python
 > class ExampleDataset(_SplittableDataset):
-> 	def __init__(self, data):
-> 		super.__init__()
-> 		self._data = data
+>     def __init__(self, data):
+>         super.__init__()
+>         self._data = data
 > 
 > 
 > >>> parent = ExampleDataset([1, 1, 4, 5, 1, 4])
@@ -412,15 +412,15 @@ SVM训练文件的绝对路径。
 >
 > ```python
 > class ExampleDataset(_SplittableDataset):
-> 	def __init__(self, filename):
-> 		super.__init__()
-> 		self._filename = filename
-> 		self._data = self._read(self._filename) # 从数据集文件中读取数据
+>     def __init__(self, filename):
+>         super.__init__()
+>         self._filename = filename
+>         self._data = self._read(self._filename) # 从数据集文件中读取数据
 > 
 > 
-> 	def get_subset(self, *index):
-> 		subset = self._create_and_init_subset_with_data(*index)
-> 		subset._filename = self._filename
+>     def get_subset(self, *index):
+>         subset = self._create_and_init_subset_with_data(*index)
+>         subset._filename = self._filename
 > ```
 >
 > 你也许会问：为什么不直接使用`__init__()`方法新建一个数据集呢？例如`subset = ExampleDataset(sub_filename)`。
